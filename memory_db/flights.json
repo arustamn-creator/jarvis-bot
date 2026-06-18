@@ -1,0 +1,29 @@
+{
+  "routes": {
+    "MOW-MCX": {
+      "origin": "MOW",
+      "dest": "MCX",
+      "threshold": null,
+      "createdAt": "2026-06-18T15:53:05.275Z"
+    }
+  },
+  "history": {
+    "MOW-MCX": {
+      "lastPrice": 12137,
+      "lastUpdate": "2026-06-18T16:26:23.176Z",
+      "minPrice": 12137
+    }
+  },
+  "sessions": {
+    "561738674": {
+      "step": "waiting_date",
+      "origin": "MOW",
+      "dest": "MCX"
+    },
+    "5715605642": {
+      "step": "waiting_date",
+      "origin": "MOW",
+      "dest": "MCX"
+    }
+  }
+}

@@ -1,0 +1,1447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JARVIS — Neural Command Center</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --p1: #7C3AED;
+  --p2: #A855F7;
+  --p3: #DDD6FE;
+  --bg: #03020a;
+  --card: rgba(12, 8, 28, 0.92);
+  --sidebar: #060412;
+  --border: rgba(124, 58, 237, 0.28);
+  --glow: rgba(168, 85, 247, 0.35);
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--p3);
+  font-family: 'Segoe UI', system-ui, monospace;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  cursor: none;
+}
+
+*, *:hover, *:focus, button, input, textarea, a { cursor: none !important; }
+
+#cursorCanvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  pointer-events: none;
+  z-index: 99999;
+}
+
+/* ─── HEADER ─── */
+header {
+  height: 58px;
+  background: rgba(6, 4, 18, 0.98);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 4px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 50;
+}
+
+.logo {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 8px;
+  color: var(--p3);
+  text-shadow: 0 0 16px var(--p2), 0 0 40px var(--p1);
+  margin-right: 6px;
+}
+
+.logo em { color: var(--p2); font-style: normal; }
+
+.h-sep { flex: 1; }
+
+.h-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  color: rgba(221,214,254,0.55);
+  border-left: 1px solid var(--border);
+}
+
+.h-chip b { color: var(--p2); font-weight: 600; }
+
+.sys-badge {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 14px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: rgba(124,58,237,0.08);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  color: var(--p3);
+  margin-left: 8px;
+}
+
+.dot-live {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #22d05b;
+  box-shadow: 0 0 8px #22d05b;
+  animation: blink 2s infinite;
+}
+
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+/* ─── LAYOUT ─── */
+.layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ─── SIDEBAR ─── */
+aside {
+  width: 214px;
+  background: var(--sidebar);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 0;
+  flex-shrink: 0;
+}
+
+.ns-label {
+  font-size: 9.5px;
+  letter-spacing: 2px;
+  color: rgba(221,214,254,0.25);
+  text-transform: uppercase;
+  padding: 0 16px 6px 16px;
+}
+
+.ni {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 14px;
+  margin: 1px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 13px;
+  color: rgba(221,214,254,0.45);
+  border: 1px solid transparent;
+  transition: all .2s;
+}
+
+.ni:hover {
+  background: rgba(124,58,237,0.1);
+  color: var(--p3);
+  border-color: var(--border);
+}
+
+.ni.on {
+  background: rgba(124,58,237,0.18);
+  color: var(--p3);
+  border-color: rgba(124,58,237,0.45);
+  box-shadow: 0 0 0 1px rgba(124,58,237,0.1) inset;
+}
+
+.ni svg { width:16px; height:16px; flex-shrink:0; }
+
+.ndiv {
+  height: 1px;
+  background: var(--border);
+  margin: 12px 14px;
+}
+
+.sf {
+  margin-top: auto;
+  padding: 14px;
+}
+
+.sysbox {
+  background: rgba(124,58,237,0.06);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 11px 12px;
+  font-size: 11px;
+}
+
+.sr {
+  display: flex;
+  justify-content: space-between;
+  color: rgba(221,214,254,0.4);
+  margin-bottom: 4px;
+}
+
+.sr span:last-child { color: var(--p2); font-weight: 600; }
+
+.pb {
+  height: 2px;
+  background: rgba(124,58,237,0.18);
+  border-radius: 2px;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.pf {
+  height: 100%;
+  background: linear-gradient(90deg, var(--p1), var(--p2));
+  border-radius: 2px;
+  box-shadow: 0 0 6px var(--p2);
+  transition: width .8s ease;
+}
+
+/* ─── MAIN ─── */
+main {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.grid-bg {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(124,58,237,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124,58,237,0.025) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+.scanline {
+  position: absolute;
+  width: 100%; height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(168,85,247,0.18), transparent);
+  animation: scan 5s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes scan {
+  0%   { top: -2px; opacity: 0; }
+  5%   { opacity: 1; }
+  95%  { opacity: 0.5; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* corners */
+.c { position: absolute; width: 18px; height: 18px; opacity: .35; }
+.c-tl { top:10px; left:10px; border-top:2px solid var(--p2); border-left:2px solid var(--p2); }
+.c-tr { top:10px; right:10px; border-top:2px solid var(--p2); border-right:2px solid var(--p2); }
+.c-bl { bottom:10px; left:10px; border-bottom:2px solid var(--p2); border-left:2px solid var(--p2); }
+.c-br { bottom:10px; right:10px; border-bottom:2px solid var(--p2); border-right:2px solid var(--p2); }
+
+/* ─── CANVASES ─── */
+#linesCanvas {
+  position: absolute; inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+#sphere {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  z-index: 2;
+}
+
+/* ─── FLOATING METRICS ─── */
+.fm {
+  position: absolute;
+  font-size: 9.5px;
+  font-family: monospace;
+  letter-spacing: 1px;
+  color: rgba(168,85,247,0.35);
+  pointer-events: none;
+  animation: floatY 7s ease-in-out infinite;
+  z-index: 0;
+}
+
+@keyframes floatY {
+  0%,100% { transform:translateY(0); opacity:.35; }
+  50%      { transform:translateY(-10px); opacity:.65; }
+}
+
+.fm:nth-child(1) { top:14%; left:28%;  animation-delay:0s; }
+.fm:nth-child(2) { top:22%; right:22%; animation-delay:1.2s; }
+.fm:nth-child(3) { bottom:18%; left:32%; animation-delay:2.4s; }
+.fm:nth-child(4) { bottom:26%; right:28%; animation-delay:0.6s; }
+.fm:nth-child(5) { top:55%; left:20%;   animation-delay:3s; }
+.fm:nth-child(6) { top:40%; right:18%;  animation-delay:1.8s; }
+
+/* ─── AGENT CARDS ─── */
+.ac {
+  position: absolute;
+  width: 168px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  padding: 13px 14px;
+  backdrop-filter: blur(14px);
+  z-index: 3;
+  cursor: pointer;
+  transition: transform .25s, box-shadow .25s, border-color .25s;
+}
+
+.ac::before {
+  content:'';
+  position: absolute; inset:-1px;
+  border-radius: 11px;
+  background: linear-gradient(135deg, rgba(124,58,237,0.25), transparent 60%, rgba(168,85,247,0.15));
+  z-index: -1;
+  opacity: 0;
+  transition: opacity .3s;
+}
+
+.ac:hover::before { opacity:1; }
+.ac:hover {
+  transform: translateY(-3px) scale(1.02);
+  border-color: rgba(168,85,247,0.65);
+  box-shadow: 0 0 24px rgba(168,85,247,0.22), 0 0 60px rgba(124,58,237,0.1);
+}
+
+.ah {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+
+.ai {
+  width: 26px; height: 26px;
+  border-radius: 6px;
+  background: rgba(124,58,237,0.18);
+  border: 1px solid rgba(124,58,237,0.4);
+  display: flex; align-items:center; justify-content:center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.an {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--p3);
+  letter-spacing: .4px;
+  line-height: 1.3;
+}
+
+.ast {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 7px;
+}
+
+.sd {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+}
+
+.sd.on  { background:#22d05b; box-shadow:0 0 6px #22d05b; animation:blink 2s infinite; }
+.sd.idl { background:#f59e0b; box-shadow:0 0 6px #f59e0b; animation:blink 3s infinite; }
+.sd.off { background:#52525b; }
+
+.stxt {
+  font-size: 9.5px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.stxt.on  { color:#22d05b; }
+.stxt.idl { color:#f59e0b; }
+.stxt.off { color:#52525b; }
+
+.aact {
+  font-size: 9.5px;
+  color: rgba(221,214,254,0.32);
+  border-top: 1px solid rgba(124,58,237,0.12);
+  padding-top: 7px;
+  line-height: 1.6;
+}
+
+.aact strong {
+  display: block;
+  color: rgba(221,214,254,0.55);
+  font-size: 9px;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  margin-bottom: 1px;
+}
+
+/* card positions */
+.p-tl { top:8%;    left:6%; }
+.p-tr { top:8%;    right:6%; }
+.p-ml { top:50%;   left:2%; transform:translateY(-50%); }
+.p-mr { top:50%;   right:2%; transform:translateY(-50%); }
+.p-bl { bottom:8%; left:6%; }
+.p-br { bottom:8%; right:6%; }
+
+.p-ml:hover, .p-mr:hover { transform: translateY(-50%) translateY(-3px) scale(1.02); }
+
+/* ─── BOT CONTROL ─── */
+.bot-status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px 10px 16px;
+}
+
+.bot-status-label {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: rgba(221,214,254,0.45);
+  text-transform: uppercase;
+}
+
+.bot-status-label b {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  font-weight: 700;
+  margin-top: 1px;
+}
+
+.bot-status-label b.running { color: #22d05b; }
+.bot-status-label b.stopped { color: #ef4444; }
+
+.btns {
+  display: flex;
+  gap: 6px;
+  padding: 0 10px 6px 10px;
+}
+
+.btn {
+  flex: 1;
+  padding: 6px 4px;
+  font-size: 10px;
+  letter-spacing: 1px;
+  font-weight: 700;
+  text-transform: uppercase;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: rgba(124,58,237,0.08);
+  color: rgba(221,214,254,0.65);
+  cursor: pointer;
+  transition: all .2s;
+}
+
+.btn:hover { background: rgba(124,58,237,0.22); color: var(--p3); border-color: rgba(168,85,247,0.5); }
+.btn.start:hover { background: rgba(34,208,91,0.15); border-color: rgba(34,208,91,0.45); color: #22d05b; }
+.btn.stop:hover  { background: rgba(239,68,68,0.15);  border-color: rgba(239,68,68,0.45);  color: #ef4444; }
+.btn.restart:hover { background: rgba(245,158,11,0.15); border-color: rgba(245,158,11,0.45); color: #f59e0b; }
+.btn:disabled { opacity: .35; cursor: default; pointer-events: none; }
+
+/* header bot badge */
+.bot-badge {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 14px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: rgba(124,58,237,0.08);
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  color: var(--p3);
+  margin-left: 8px;
+  transition: border-color .4s, background .4s;
+}
+
+.bot-badge.running { border-color: rgba(34,208,91,0.4); background: rgba(34,208,91,0.07); }
+.bot-badge.stopped { border-color: rgba(239,68,68,0.4); background: rgba(239,68,68,0.07); }
+
+.dot-bot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #52525b;
+  transition: background .4s, box-shadow .4s;
+}
+
+.bot-badge.running .dot-bot { background: #22d05b; box-shadow: 0 0 8px #22d05b; animation: blink 2s infinite; }
+.bot-badge.stopped .dot-bot { background: #ef4444; box-shadow: 0 0 8px #ef4444; animation: none; }
+
+/* ─── CHAT PANEL ─── */
+.chat-panel {
+  width: 310px;
+  flex-shrink: 0;
+  background: var(--sidebar);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 10;
+}
+
+.chat-header {
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.chat-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.j-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--p1), var(--p2));
+  box-shadow: 0 0 14px rgba(168,85,247,0.5);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.j-avatar.sm {
+  width: 26px; height: 26px;
+  font-size: 11px;
+  box-shadow: 0 0 10px rgba(168,85,247,0.4);
+}
+
+.chat-name {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--p3);
+}
+
+.chat-sub {
+  font-size: 9.5px;
+  color: rgba(221,214,254,0.3);
+  letter-spacing: .8px;
+  margin-top: 1px;
+}
+
+.chat-clear {
+  font-size: 9.5px;
+  letter-spacing: 1px;
+  color: rgba(221,214,254,0.25);
+  cursor: pointer;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: none;
+  transition: all .2s;
+  text-transform: uppercase;
+}
+
+.chat-clear:hover {
+  color: rgba(221,214,254,0.6);
+  border-color: var(--border);
+  background: rgba(124,58,237,0.08);
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(124,58,237,0.25) transparent;
+}
+
+.chat-messages::-webkit-scrollbar { width: 4px; }
+.chat-messages::-webkit-scrollbar-track { background: transparent; }
+.chat-messages::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.3); border-radius: 2px; }
+
+.msg {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  max-width: 100%;
+}
+
+.msg.user {
+  flex-direction: row-reverse;
+}
+
+.bubble {
+  padding: 9px 13px;
+  border-radius: 14px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  max-width: 220px;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+.msg.jarvis .bubble {
+  background: rgba(124,58,237,0.14);
+  border: 1px solid rgba(124,58,237,0.28);
+  border-bottom-left-radius: 4px;
+  color: var(--p3);
+}
+
+.msg.user .bubble {
+  background: rgba(124,58,237,0.28);
+  border: 1px solid rgba(168,85,247,0.4);
+  border-bottom-right-radius: 4px;
+  color: #ede9fe;
+  box-shadow: 0 0 12px rgba(124,58,237,0.15);
+}
+
+.msg-time {
+  font-size: 9px;
+  color: rgba(221,214,254,0.2);
+  letter-spacing: .5px;
+  margin-top: 3px;
+  text-align: right;
+}
+
+.msg.jarvis .msg-time { text-align: left; padding-left: 34px; }
+
+.typing-dot {
+  display: inline-block;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--p2);
+  animation: typingBlink 1.2s infinite;
+  margin: 0 1px;
+}
+
+.typing-dot:nth-child(2) { animation-delay: .2s; }
+.typing-dot:nth-child(3) { animation-delay: .4s; }
+
+@keyframes typingBlink {
+  0%,100% { opacity:.2; transform: translateY(0); }
+  50%      { opacity:1;  transform: translateY(-3px); }
+}
+
+.chat-input-area {
+  border-top: 1px solid var(--border);
+  padding: 10px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+#chatInput {
+  flex: 1;
+  background: rgba(124,58,237,0.07);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 9px 12px;
+  color: var(--p3);
+  font-family: inherit;
+  font-size: 12.5px;
+  resize: none;
+  outline: none;
+  max-height: 100px;
+  overflow-y: auto;
+  line-height: 1.4;
+  transition: border-color .2s;
+}
+
+#chatInput::placeholder { color: rgba(221,214,254,0.2); }
+#chatInput:focus { border-color: rgba(168,85,247,0.5); }
+
+#chatSend {
+  width: 36px; height: 36px;
+  border-radius: 9px;
+  border: 1px solid rgba(124,58,237,0.5);
+  background: linear-gradient(135deg, var(--p1), var(--p2));
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: all .2s;
+  box-shadow: 0 0 12px rgba(124,58,237,0.3);
+}
+
+#chatSend:hover { box-shadow: 0 0 20px rgba(168,85,247,0.5); transform: scale(1.05); }
+#chatSend:disabled { opacity: .4; cursor: default; transform: none; }
+#chatSend svg { width:15px; height:15px; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">J<em>A</em>RVIS</div>
+  <div class="h-chip">AGENTS <b id="agentCount">6</b></div>
+  <div class="h-chip">UPTIME <b id="uptime">00:00:00</b></div>
+  <div class="h-chip">REQUESTS <b id="reqCount">0</b></div>
+  <div class="h-chip">TOKENS <b id="tokCount">0</b></div>
+  <div class="h-sep"></div>
+  <div class="sys-badge"><div class="dot-live"></div>SYSTEM ONLINE</div>
+  <div class="bot-badge stopped" id="botHeaderBadge"><div class="dot-bot"></div><span id="botHeaderLabel">BOT OFFLINE</span></div>
+  <div class="h-chip">v2.4.1</div>
+</header>
+
+<div class="layout">
+
+<!-- SIDEBAR -->
+<aside>
+  <div class="ns-label" style="margin-bottom:4px">Core</div>
+
+  <div class="ni on">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+      <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+    </svg>Dashboard
+  </div>
+  <div class="ni">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+    </svg>Agents
+  </div>
+  <div class="ni">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    </svg>Telegram
+  </div>
+  <div class="ni">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/>
+    </svg>Analytics
+  </div>
+
+  <div class="ndiv"></div>
+  <div class="ns-label">Freelance</div>
+
+  <div class="ni">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14,2 14,8 20,8"/>
+    </svg>Kwork Orders
+  </div>
+  <div class="ni">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+      <line x1="7" y1="7" x2="7.01" y2="7"/>
+    </svg>FL.ru Orders
+  </div>
+  <div class="ni">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+    </svg>Marketing
+  </div>
+
+  <div class="ndiv"></div>
+  <div class="ns-label">System</div>
+
+  <div class="ni">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <ellipse cx="12" cy="5" rx="9" ry="3"/>
+      <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+      <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+    </svg>Memory DB
+  </div>
+  <div class="ni">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+    </svg>Settings
+  </div>
+
+  <div class="ndiv"></div>
+  <div class="ns-label">Bot Control</div>
+
+  <div class="bot-status-row">
+    <div class="sd off" id="botDot"></div>
+    <div class="bot-status-label">Status<b id="botStatusText" class="stopped">STOPPED</b></div>
+  </div>
+
+  <div class="btns">
+    <button class="btn start" id="btnStart" onclick="botAction('start')">Start</button>
+    <button class="btn stop"  id="btnStop"  onclick="botAction('stop')">Stop</button>
+    <button class="btn restart" id="btnRestart" onclick="botAction('restart')">Restart</button>
+  </div>
+
+  <div class="sf">
+    <div class="sysbox">
+      <div class="sr"><span>CPU</span><span id="cpuVal">18%</span></div>
+      <div class="pb"><div class="pf" id="cpuBar" style="width:18%"></div></div>
+      <div class="sr"><span>MEMORY</span><span id="memVal">64%</span></div>
+      <div class="pb"><div class="pf" id="memBar" style="width:64%"></div></div>
+      <div class="sr"><span>API</span><span id="apiSt">HEALTHY</span></div>
+      <div class="pb"><div class="pf" style="width:100%"></div></div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN AREA -->
+<main>
+  <div class="grid-bg"></div>
+  <div class="scanline"></div>
+
+  <!-- corners -->
+  <div class="c c-tl"></div>
+  <div class="c c-tr"></div>
+  <div class="c c-bl"></div>
+  <div class="c c-br"></div>
+
+  <!-- floating metrics -->
+  <div class="fm" id="fm0">SYN · 0x7F3A</div>
+  <div class="fm" id="fm1">LAT · 42ms</div>
+  <div class="fm" id="fm2">PKT · 1.2K/s</div>
+  <div class="fm" id="fm3">VEC · 512d</div>
+  <div class="fm" id="fm4">HEAP · 312MB</div>
+  <div class="fm" id="fm5">TPS · 0.8</div>
+
+  <!-- canvases -->
+  <canvas id="linesCanvas"></canvas>
+  <canvas id="sphere" width="300" height="300"></canvas>
+
+  <!-- AGENT CARDS -->
+  <div class="ac p-tl" id="c-marketing">
+    <div class="ah">
+      <div class="ai">📊</div>
+      <div class="an">Marketing<br>Agent</div>
+    </div>
+    <div class="ast">
+      <div class="sd on"></div>
+      <span class="stxt on">ONLINE</span>
+    </div>
+    <div class="aact">
+      <strong>Last Activity</strong>
+      2 min ago · Cover letter gen
+    </div>
+  </div>
+
+  <div class="ac p-tr" id="c-seo">
+    <div class="ah">
+      <div class="ai">🔍</div>
+      <div class="an">SEO<br>Agent</div>
+    </div>
+    <div class="ast">
+      <div class="sd on"></div>
+      <span class="stxt on">ONLINE</span>
+    </div>
+    <div class="aact">
+      <strong>Last Activity</strong>
+      5 min ago · Audit report #47
+    </div>
+  </div>
+
+  <div class="ac p-ml" id="c-content">
+    <div class="ah">
+      <div class="ai">✍️</div>
+      <div class="an">Content<br>Agent</div>
+    </div>
+    <div class="ast">
+      <div class="sd idl"></div>
+      <span class="stxt idl">IDLE</span>
+    </div>
+    <div class="aact">
+      <strong>Last Activity</strong>
+      18 min ago · Blog draft
+    </div>
+  </div>
+
+  <div class="ac p-mr" id="c-analytics">
+    <div class="ah">
+      <div class="ai">📈</div>
+      <div class="an">Analytics<br>Agent</div>
+    </div>
+    <div class="ast">
+      <div class="sd on"></div>
+      <span class="stxt on">ONLINE</span>
+    </div>
+    <div class="aact">
+      <strong>Last Activity</strong>
+      Just now · Stats pull
+    </div>
+  </div>
+
+  <div class="ac p-bl" id="c-telegram">
+    <div class="ah">
+      <div class="ai">✈️</div>
+      <div class="an">Telegram<br>Agent</div>
+    </div>
+    <div class="ast">
+      <div class="sd on"></div>
+      <span class="stxt on">ONLINE</span>
+    </div>
+    <div class="aact">
+      <strong>Last Activity</strong>
+      Just now · Msg handler
+    </div>
+  </div>
+
+  <div class="ac p-br" id="c-memory">
+    <div class="ah">
+      <div class="ai">🧠</div>
+      <div class="an">Memory<br>Agent</div>
+    </div>
+    <div class="ast">
+      <div class="sd idl"></div>
+      <span class="stxt idl">IDLE</span>
+    </div>
+    <div class="aact">
+      <strong>Last Activity</strong>
+      32 min ago · Vec index
+    </div>
+  </div>
+
+</main>
+
+<!-- CHAT PANEL -->
+<section class="chat-panel">
+  <div class="chat-header">
+    <div class="chat-title">
+      <div class="j-avatar">J</div>
+      <div>
+        <div class="chat-name">JARVIS</div>
+        <div class="chat-sub">Neural Interface · Claude</div>
+      </div>
+    </div>
+    <button class="chat-clear" onclick="clearChat()">Clear</button>
+  </div>
+
+  <div class="chat-messages" id="chatMessages">
+    <div class="msg jarvis">
+      <div class="j-avatar sm">J</div>
+      <div>
+        <div class="bubble">Good day. I am JARVIS, your personal AI assistant. How may I be of service?</div>
+        <div class="msg-time">System boot</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="chat-input-area">
+    <textarea id="chatInput" placeholder="Send a command..." rows="1"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMessage();}"></textarea>
+    <button id="chatSend" onclick="sendChatMessage()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="22" y1="2" x2="11" y2="13"/>
+        <polygon points="22,2 15,22 11,13 2,9"/>
+      </svg>
+    </button>
+  </div>
+</section>
+
+</div>
+
+<canvas id="cursorCanvas"></canvas>
+
+<script>
+/* ─── SPHERE ─── */
+const sc = document.getElementById('sphere');
+const sctx = sc.getContext('2d');
+const SW = 300, SH = 300, CX = 150, CY = 150;
+
+const rings = [
+  { a:0,            speed: 0.007,  rx:115, ry:28 },
+  { a:Math.PI*.4,   speed:-0.010,  rx:90,  ry:22 },
+  { a:Math.PI*.75,  speed: 0.005,  rx:135, ry:34 },
+  { a:Math.PI*1.1,  speed: 0.013,  rx:68,  ry:17 },
+  { a:Math.PI*1.6,  speed:-0.007,  rx:105, ry:26 },
+];
+
+const parts = Array.from({length:60}, () => ({
+  angle: Math.random()*Math.PI*2,
+  r: 75 + Math.random()*70,
+  speed: (Math.random()-.5)*.018,
+  size: .8 + Math.random()*2.2,
+  alpha: .3 + Math.random()*.7,
+  phase: Math.random()*Math.PI*2,
+}));
+
+function drawSphere(t) {
+  sctx.clearRect(0,0,SW,SH);
+
+  // outer halo
+  const halo = sctx.createRadialGradient(CX,CY,20,CX,CY,148);
+  halo.addColorStop(0,'rgba(168,85,247,.09)');
+  halo.addColorStop(1,'rgba(124,58,237,0)');
+  sctx.fillStyle = halo;
+  sctx.fillRect(0,0,SW,SH);
+
+  // rings back half
+  rings.forEach(r => {
+    sctx.save();
+    sctx.translate(CX,CY);
+    sctx.rotate(r.a);
+    sctx.scale(1, r.ry/r.rx);
+    sctx.beginPath();
+    sctx.arc(0,0,r.rx, Math.PI, Math.PI*2);
+    const g = sctx.createLinearGradient(-r.rx,0,r.rx,0);
+    g.addColorStop(0,'rgba(124,58,237,0)');
+    g.addColorStop(.35,'rgba(124,58,237,.25)');
+    g.addColorStop(.5,'rgba(168,85,247,.55)');
+    g.addColorStop(.65,'rgba(124,58,237,.25)');
+    g.addColorStop(1,'rgba(124,58,237,0)');
+    sctx.strokeStyle = g;
+    sctx.lineWidth = 1.4;
+    sctx.shadowColor='#A855F7'; sctx.shadowBlur=8;
+    sctx.stroke();
+    sctx.restore();
+    r.a += r.speed;
+  });
+
+  // core glows
+  [[70,.04],[52,.08],[36,.17]].forEach(([rad,al])=>{
+    const g2 = sctx.createRadialGradient(CX,CY,0,CX,CY,rad);
+    g2.addColorStop(0,`rgba(221,214,254,${al})`);
+    g2.addColorStop(1,'rgba(124,58,237,0)');
+    sctx.fillStyle=g2;
+    sctx.beginPath(); sctx.arc(CX,CY,rad,0,Math.PI*2); sctx.fill();
+  });
+
+  // core sphere
+  const cg = sctx.createRadialGradient(CX-10,CY-10,2,CX,CY,30);
+  cg.addColorStop(0,'#EDE9FE');
+  cg.addColorStop(.25,'#C084FC');
+  cg.addColorStop(.6,'#7C3AED');
+  cg.addColorStop(1,'#3B0764');
+  sctx.shadowColor='#A855F7'; sctx.shadowBlur=35;
+  sctx.fillStyle=cg;
+  sctx.beginPath(); sctx.arc(CX,CY,30,0,Math.PI*2); sctx.fill();
+  sctx.shadowBlur=0;
+
+  // specular
+  const sp = sctx.createRadialGradient(CX-10,CY-11,0,CX-6,CY-8,13);
+  sp.addColorStop(0,'rgba(255,255,255,.45)');
+  sp.addColorStop(1,'rgba(255,255,255,0)');
+  sctx.fillStyle=sp;
+  sctx.beginPath(); sctx.arc(CX,CY,30,0,Math.PI*2); sctx.fill();
+
+  // rings front half
+  rings.forEach(r => {
+    sctx.save();
+    sctx.translate(CX,CY);
+    sctx.rotate(r.a);
+    sctx.scale(1, r.ry/r.rx);
+    sctx.beginPath();
+    sctx.arc(0,0,r.rx, 0, Math.PI);
+    const g = sctx.createLinearGradient(-r.rx,0,r.rx,0);
+    g.addColorStop(0,'rgba(124,58,237,0)');
+    g.addColorStop(.35,'rgba(124,58,237,.38)');
+    g.addColorStop(.5,'rgba(168,85,247,.75)');
+    g.addColorStop(.65,'rgba(124,58,237,.38)');
+    g.addColorStop(1,'rgba(124,58,237,0)');
+    sctx.strokeStyle=g;
+    sctx.lineWidth=1.4;
+    sctx.shadowColor='#A855F7'; sctx.shadowBlur=12;
+    sctx.stroke();
+    sctx.restore();
+  });
+
+  // particles
+  parts.forEach(p => {
+    const px = CX + Math.cos(p.angle)*p.r;
+    const py = CY + Math.sin(p.angle)*p.r*.38;
+    const pulse = .4 + .6*Math.sin(t*.002+p.phase);
+    sctx.beginPath();
+    sctx.arc(px,py,p.size,0,Math.PI*2);
+    sctx.fillStyle=`rgba(168,85,247,${p.alpha*pulse})`;
+    sctx.shadowColor='#A855F7'; sctx.shadowBlur=6;
+    sctx.fill(); sctx.shadowBlur=0;
+    p.angle += p.speed;
+  });
+
+  // energy pulses
+  [0, .333, .666].forEach(offset => {
+    const prog = (t*.0008+offset)%1;
+    const rp = 30 + prog*110;
+    const al = (1-prog)*.28;
+    sctx.beginPath();
+    sctx.arc(CX,CY,rp,0,Math.PI*2);
+    sctx.strokeStyle=`rgba(168,85,247,${al})`;
+    sctx.lineWidth=1;
+    sctx.stroke();
+  });
+}
+
+/* ─── LINES ─── */
+const lc = document.getElementById('linesCanvas');
+const lctx2 = lc.getContext('2d');
+
+function resizeLC() {
+  const m = document.querySelector('main');
+  lc.width = m.clientWidth;
+  lc.height = m.clientHeight;
+}
+
+function getCenter(el) {
+  const m = document.querySelector('main').getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  return { x: r.left-m.left+r.width/2, y: r.top-m.top+r.height/2 };
+}
+
+const cardIds = ['c-marketing','c-seo','c-content','c-analytics','c-telegram','c-memory'];
+let phases = cardIds.map((_,i)=>i*(Math.PI*2/cardIds.length));
+
+function drawLines(t) {
+  lctx2.clearRect(0,0,lc.width,lc.height);
+  const m = document.querySelector('main');
+  const sc2 = { x: m.clientWidth/2, y: m.clientHeight/2 };
+
+  cardIds.forEach((id,i)=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    const cc = getCenter(el);
+    phases[i] += 0.018;
+
+    const grad = lctx2.createLinearGradient(sc2.x,sc2.y,cc.x,cc.y);
+    grad.addColorStop(0,'rgba(168,85,247,.65)');
+    grad.addColorStop(.4,'rgba(124,58,237,.25)');
+    grad.addColorStop(1,'rgba(124,58,237,.04)');
+
+    lctx2.beginPath();
+    lctx2.moveTo(sc2.x, sc2.y);
+    lctx2.lineTo(cc.x, cc.y);
+    lctx2.strokeStyle = grad;
+    lctx2.lineWidth = 1;
+    lctx2.setLineDash([7,5]);
+    lctx2.lineDashOffset = -(t*.055);
+    lctx2.stroke();
+    lctx2.setLineDash([]);
+
+    // travelling dot
+    const prog = (Math.sin(phases[i])*.5+.5);
+    const px = sc2.x+(cc.x-sc2.x)*prog;
+    const py = sc2.y+(cc.y-sc2.y)*prog;
+    lctx2.beginPath();
+    lctx2.arc(px,py,2.5,0,Math.PI*2);
+    lctx2.fillStyle='rgba(221,214,254,.95)';
+    lctx2.shadowColor='#A855F7'; lctx2.shadowBlur=14;
+    lctx2.fill(); lctx2.shadowBlur=0;
+
+    // node dot at card
+    lctx2.beginPath();
+    lctx2.arc(cc.x,cc.y,3.5,0,Math.PI*2);
+    lctx2.fillStyle='rgba(168,85,247,.4)';
+    lctx2.shadowColor='#A855F7'; lctx2.shadowBlur=8;
+    lctx2.fill(); lctx2.shadowBlur=0;
+  });
+}
+
+/* ─── STATS ─── */
+let start=Date.now(), reqs=0, toks=0;
+
+function updateStats() {
+  const el=Math.floor((Date.now()-start)/1000);
+  const h=String(Math.floor(el/3600)).padStart(2,'0');
+  const mn=String(Math.floor((el%3600)/60)).padStart(2,'0');
+  const s=String(el%60).padStart(2,'0');
+  document.getElementById('uptime').textContent=`${h}:${mn}:${s}`;
+
+  reqs += Math.floor(Math.random()*4);
+  document.getElementById('reqCount').textContent=reqs.toLocaleString();
+
+  toks += Math.floor(Math.random()*120+40);
+  document.getElementById('tokCount').textContent=(toks/1000).toFixed(1)+'K';
+
+  const cpu=12+Math.floor(Math.random()*28);
+  document.getElementById('cpuVal').textContent=cpu+'%';
+  document.getElementById('cpuBar').style.width=cpu+'%';
+
+  const mem=58+Math.floor(Math.random()*18);
+  document.getElementById('memVal').textContent=mem+'%';
+  document.getElementById('memBar').style.width=mem+'%';
+
+  // floating metrics
+  const rh=()=>Math.floor(Math.random()*0xFFFF).toString(16).toUpperCase().padStart(4,'0');
+  document.getElementById('fm0').textContent=`SYN · 0x${rh()}`;
+  document.getElementById('fm1').textContent=`LAT · ${18+Math.floor(Math.random()*55)}ms`;
+  document.getElementById('fm2').textContent=`PKT · ${(.6+Math.random()*2).toFixed(1)}K/s`;
+  document.getElementById('fm3').textContent=`VEC · ${256+Math.floor(Math.random()*512)}d`;
+  document.getElementById('fm4').textContent=`HEAP · ${280+Math.floor(Math.random()*120)}MB`;
+  document.getElementById('fm5').textContent=`TPS · ${(.4+Math.random()*1.6).toFixed(1)}`;
+}
+
+/* ─── BOT API ─── */
+function applyBotStatus(status) {
+  const running = status === 'running';
+  const dot     = document.getElementById('botDot');
+  const txt     = document.getElementById('botStatusText');
+  const badge   = document.getElementById('botHeaderBadge');
+  const label   = document.getElementById('botHeaderLabel');
+  const teleCard = document.getElementById('c-telegram');
+
+  dot.className   = 'sd ' + (running ? 'on' : 'off');
+  txt.className   = running ? 'running' : 'stopped';
+  txt.textContent = running ? 'RUNNING' : 'STOPPED';
+
+  badge.className = 'bot-badge ' + (running ? 'running' : 'stopped');
+  label.textContent = running ? 'BOT ONLINE' : 'BOT OFFLINE';
+
+  // reflect on Telegram agent card
+  if (teleCard) {
+    const sd   = teleCard.querySelector('.sd');
+    const stxt = teleCard.querySelector('.stxt');
+    if (sd && stxt) {
+      sd.className   = 'sd ' + (running ? 'on' : 'off');
+      stxt.className = 'stxt ' + (running ? 'on' : 'off');
+      stxt.textContent = running ? 'ONLINE' : 'OFFLINE';
+    }
+  }
+}
+
+async function pollBotStatus() {
+  try {
+    const r = await fetch('/api/bot/status');
+    const d = await r.json();
+    applyBotStatus(d.status);
+  } catch { /* server may be restarting */ }
+}
+
+async function botAction(action) {
+  const btns = ['btnStart','btnStop','btnRestart'].map(id => document.getElementById(id));
+  btns.forEach(b => b.disabled = true);
+  try {
+    const r = await fetch(`/api/bot/${action}`, { method: 'POST' });
+    const d = await r.json();
+    applyBotStatus(d.status);
+  } catch (e) {
+    console.error(e);
+  } finally {
+    btns.forEach(b => b.disabled = false);
+  }
+}
+
+/* ─── CHAT ─── */
+function timeNow() {
+  return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function appendMsg(role, text) {
+  const box = document.getElementById('chatMessages');
+
+  const wrap = document.createElement('div');
+  wrap.className = `msg ${role}`;
+
+  if (role === 'jarvis') {
+    const av = document.createElement('div');
+    av.className = 'j-avatar sm';
+    av.textContent = 'J';
+    wrap.appendChild(av);
+  }
+
+  const inner = document.createElement('div');
+
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.textContent = text;
+  inner.appendChild(bubble);
+
+  const ts = document.createElement('div');
+  ts.className = 'msg-time';
+  ts.textContent = timeNow();
+  inner.appendChild(ts);
+
+  wrap.appendChild(inner);
+  box.appendChild(wrap);
+  box.scrollTop = box.scrollHeight;
+  return bubble;
+}
+
+function appendTyping() {
+  const box = document.getElementById('chatMessages');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg jarvis';
+  wrap.id = 'typingMsg';
+
+  const av = document.createElement('div');
+  av.className = 'j-avatar sm';
+  av.textContent = 'J';
+  wrap.appendChild(av);
+
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.innerHTML = '<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>';
+  wrap.appendChild(bubble);
+  box.appendChild(wrap);
+  box.scrollTop = box.scrollHeight;
+  return wrap;
+}
+
+async function sendChatMessage() {
+  const input = document.getElementById('chatInput');
+  const sendBtn = document.getElementById('chatSend');
+  const msg = input.value.trim();
+  if (!msg || sendBtn.disabled) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+  appendMsg('user', msg);
+
+  sendBtn.disabled = true;
+  const typingEl = appendTyping();
+  let bubble = null;
+  let fullText = '';
+
+  try {
+    const resp = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg }),
+    });
+
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+    typingEl.remove();
+    bubble = appendMsg('jarvis', '');
+    const box = document.getElementById('chatMessages');
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        try {
+          const data = JSON.parse(line.slice(6));
+          if (data.delta) {
+            fullText += data.delta;
+            bubble.textContent = fullText;
+            box.scrollTop = box.scrollHeight;
+          } else if (data.error) {
+            bubble.textContent = `[System error: ${data.error}]`;
+          }
+        } catch { }
+      }
+    }
+
+    if (fullText) speak(fullText);
+
+  } catch (err) {
+    if (typingEl.parentNode) typingEl.remove();
+    const errMsg = 'Neural link error. Check server logs.';
+    if (bubble) bubble.textContent = errMsg;
+    else appendMsg('jarvis', errMsg);
+    console.error(err);
+  } finally {
+    sendBtn.disabled = false;
+    input.focus();
+  }
+}
+
+function clearChat() {
+  const box = document.getElementById('chatMessages');
+  box.innerHTML = '';
+  const msg = 'Memory cleared. Ready for new directives.';
+  appendMsg('jarvis', msg);
+  speak(msg);
+}
+
+// auto-resize textarea
+document.addEventListener('DOMContentLoaded', () => {
+  const ta = document.getElementById('chatInput');
+  if (ta) ta.addEventListener('input', () => {
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(ta.scrollHeight, 100) + 'px';
+  });
+});
+
+/* ─── VOICE ─── */
+let selectedVoice = null;
+
+function loadVoices() {
+  const voices = speechSynthesis.getVoices();
+  if (!voices.length) return;
+  selectedVoice =
+    voices.find(v => v.lang.startsWith('en') && /david|james|mark|daniel|george/i.test(v.name)) ||
+    voices.find(v => v.lang === 'en-GB') ||
+    voices.find(v => v.lang === 'en-US') ||
+    voices.find(v => v.lang.startsWith('en')) ||
+    voices[0];
+}
+
+if ('speechSynthesis' in window) {
+  speechSynthesis.addEventListener('voiceschanged', loadVoices);
+  loadVoices();
+}
+
+function speak(text) {
+  if (!('speechSynthesis' in window) || !text) return;
+  speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  if (selectedVoice) utter.voice = selectedVoice;
+  utter.pitch = 0.8;
+  utter.rate = 0.9;
+  utter.volume = 1;
+  speechSynthesis.speak(utter);
+}
+
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    loadVoices();
+    speak('Good day. I am Jarvis, your personal AI assistant. All systems online.');
+  }, 800);
+});
+
+/* ─── CURSOR ─── */
+const cursorCanvas = document.getElementById('cursorCanvas');
+const cctx = cursorCanvas.getContext('2d');
+
+let mx = -200, my = -200;
+
+function resizeCursor() {
+  cursorCanvas.width = window.innerWidth;
+  cursorCanvas.height = window.innerHeight;
+}
+
+document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+
+function drawCursor() {
+  cctx.clearRect(0, 0, cursorCanvas.width, cursorCanvas.height);
+
+  // 8px purple dot
+  cctx.beginPath();
+  cctx.arc(mx, my, 4, 0, Math.PI * 2);
+  cctx.fillStyle = 'rgba(168,85,247,0.95)';
+  cctx.shadowColor = '#A855F7';
+  cctx.shadowBlur = 7;
+  cctx.fill();
+  cctx.shadowBlur = 0;
+
+  // Compact crosshair (gap=6, len=7)
+  cctx.strokeStyle = 'rgba(168,85,247,0.55)';
+  cctx.lineWidth = 1;
+  const gap = 6, len = 7;
+  [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dx,dy]) => {
+    cctx.beginPath();
+    cctx.moveTo(mx + dx*gap,       my + dy*gap);
+    cctx.lineTo(mx + dx*(gap+len), my + dy*(gap+len));
+    cctx.stroke();
+  });
+}
+
+/* ─── INIT ─── */
+resizeLC();
+resizeCursor();
+window.addEventListener('resize', () => { resizeLC(); resizeCursor(); });
+setInterval(updateStats, 1200);
+pollBotStatus();
+setInterval(pollBotStatus, 4000);
+
+function loop(t) {
+  drawSphere(t);
+  drawLines(t);
+  drawCursor();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Маркетинговый план — Кофе Хаус</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+  :root {
+    --brown-dark:  #2C1503;
+    --brown:       #6F3B1A;
+    --brown-mid:   #A0522D;
+    --brown-light: #C8956C;
+    --cream:       #FDF6EC;
+    --cream2:      #F0E0C8;
+    --white:       #FFFFFF;
+    --gray:        #444444;
+    --green:       #2E7D32;
+    --green-light: #E8F5E9;
+    --blue:        #1565C0;
+    --blue-light:  #E3F2FD;
+    --purple:      #6A1B9A;
+    --purple-light:#F3E5F5;
+    --teal:        #00695C;
+    --teal-light:  #E0F2F1;
+    --orange:      #E65100;
+    --orange-light:#FFF3E0;
+    --red:         #C62828;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+    background: #f8f5f0;
+    color: var(--gray);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  /* ─── PAGE WRAPPER ─── */
+  .page {
+    width: 210mm;
+    margin: 0 auto;
+    background: white;
+  }
+
+  /* ─── COVER ─── */
+  .cover {
+    width: 210mm;
+    height: 297mm;
+    background: linear-gradient(135deg, #1a0800 0%, #3B1F0A 30%, #6F3B1A 65%, #A0522D 100%);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    page-break-after: always;
+  }
+
+  /* Декоративные круги */
+  .cover::before {
+    content: '';
+    position: absolute;
+    right: -60px; top: 50%;
+    transform: translateY(-50%);
+    width: 320px; height: 320px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(200,149,108,0.15) 0%, rgba(200,149,108,0.05) 60%, transparent 100%);
+    border: 2px solid rgba(200,149,108,0.2);
+  }
+  .cover::after {
+    content: '';
+    position: absolute;
+    left: -40px; bottom: 60px;
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .cover-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .cover-top-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 6px;
+    background: linear-gradient(90deg, var(--brown-light), var(--orange), var(--brown-light));
+  }
+  .cover-bottom-bar {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 70px;
+    background: rgba(0,0,0,0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+  }
+  .cover-bottom-bar span {
+    color: rgba(255,255,255,0.7);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .cover-bottom-bar .sep {
+    color: var(--brown-light);
+    font-size: 14px;
+  }
+
+  .cover-content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    padding: 0 40px;
+  }
+
+  .cup-emoji {
+    font-size: 80px;
+    display: block;
+    margin-bottom: 16px;
+    filter: drop-shadow(0 8px 24px rgba(0,0,0,0.5));
+    animation: none;
+  }
+
+  /* CSS кофейная чашка */
+  .coffee-cup {
+    width: 120px;
+    height: 110px;
+    margin: 0 auto 20px;
+    position: relative;
+  }
+  .cup-body {
+    width: 90px;
+    height: 70px;
+    background: linear-gradient(135deg, var(--brown-light) 0%, var(--brown-mid) 50%, var(--brown) 100%);
+    border-radius: 8px 8px 20px 20px;
+    margin: 0 auto;
+    position: relative;
+    box-shadow: inset -6px 0 12px rgba(0,0,0,0.2), 0 4px 16px rgba(0,0,0,0.4);
+  }
+  .cup-body::before {
+    content: '';
+    position: absolute;
+    top: 8px; left: 10px; right: 10px;
+    height: 20px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 50%;
+    filter: blur(4px);
+  }
+  .cup-handle {
+    position: absolute;
+    right: -20px; top: 12px;
+    width: 26px; height: 36px;
+    border: 6px solid var(--brown-light);
+    border-left: none;
+    border-radius: 0 20px 20px 0;
+  }
+  .cup-saucer {
+    width: 110px;
+    height: 14px;
+    background: linear-gradient(135deg, var(--brown-light), var(--brown));
+    border-radius: 50%;
+    margin: 0 auto;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+  .cup-steam {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 6px;
+    height: 24px;
+  }
+  .steam-line {
+    width: 2px;
+    height: 20px;
+    background: linear-gradient(to top, transparent, rgba(255,255,255,0.6));
+    border-radius: 2px;
+    transform-origin: bottom;
+  }
+  .steam-line:nth-child(1) { transform: rotate(-8deg); }
+  .steam-line:nth-child(2) { transform: rotate(0deg); }
+  .steam-line:nth-child(3) { transform: rotate(8deg); }
+
+  .cover-tag {
+    display: inline-block;
+    background: rgba(200,149,108,0.25);
+    border: 1px solid rgba(200,149,108,0.5);
+    color: var(--brown-light);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 5px 16px;
+    border-radius: 20px;
+    margin-bottom: 16px;
+  }
+  .cover-title {
+    font-size: 54px;
+    font-weight: 900;
+    color: white;
+    letter-spacing: -1px;
+    line-height: 1;
+    margin-bottom: 6px;
+    text-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  }
+  .cover-subtitle {
+    font-size: 18px;
+    font-weight: 300;
+    color: var(--cream2);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .cover-period {
+    font-size: 13px;
+    color: var(--brown-light);
+    font-weight: 500;
+    margin-bottom: 36px;
+  }
+
+  .cover-stats {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .cover-stat {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 14px 20px;
+    text-align: center;
+    min-width: 88px;
+  }
+  .cover-stat-val {
+    display: block;
+    font-size: 20px;
+    font-weight: 800;
+    color: white;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .cover-stat-lbl {
+    display: block;
+    font-size: 9px;
+    color: var(--brown-light);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* ─── SECTION PAGES ─── */
+  .section-page {
+    width: 210mm;
+    min-height: 297mm;
+    padding: 20mm 18mm 22mm;
+    page-break-after: always;
+    background: white;
+  }
+  .section-page:last-child { page-break-after: avoid; }
+
+  /* ─── SECTION HEADER ─── */
+  .sec-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: linear-gradient(135deg, var(--brown-dark) 0%, var(--brown) 100%);
+    border-radius: 10px;
+    padding: 12px 18px;
+    margin-bottom: 18px;
+  }
+  .sec-num {
+    width: 34px; height: 34px;
+    background: var(--brown-light);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 800; color: white;
+    flex-shrink: 0;
+  }
+  .sec-title {
+    font-size: 16px; font-weight: 700; color: white;
+    flex: 1;
+  }
+  .sec-icon {
+    font-size: 22px; opacity: 0.5;
+  }
+
+  /* ─── SUB HEADERS ─── */
+  .sub-h {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--brown);
+    margin: 14px 0 8px;
+    padding-left: 10px;
+    border-left: 3px solid var(--brown-light);
+  }
+
+  /* ─── STAT BOXES (резюме) ─── */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin: 14px 0;
+  }
+  .stat-box {
+    border-radius: 10px;
+    padding: 14px 10px;
+    text-align: center;
+    color: white;
+  }
+  .stat-val {
+    font-size: 18px; font-weight: 800;
+    display: block; line-height: 1;
+    margin-bottom: 4px;
+  }
+  .stat-lbl {
+    font-size: 8px;
+    opacity: 0.85;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  /* ─── GOALS LIST ─── */
+  .goals-list { display: flex; flex-direction: column; gap: 4px; }
+  .goal-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    border-radius: 7px;
+    background: #fafafa;
+    border-left: 3px solid var(--brown);
+  }
+  .goal-row:nth-child(even) { background: var(--cream); }
+  .goal-val {
+    font-size: 16px; font-weight: 800;
+    color: var(--brown);
+    min-width: 70px;
+    flex-shrink: 0;
+  }
+  .goal-lbl { font-size: 11px; color: var(--gray); }
+
+  /* ─── ТАБЛИЦЫ ─── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    margin-bottom: 12px;
+  }
+  th {
+    background: var(--brown-dark);
+    color: white;
+    padding: 8px 10px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 10px;
+  }
+  th:first-child { text-align: left; }
+  td {
+    padding: 7px 10px;
+    border-bottom: 1px solid #eee;
+    vertical-align: middle;
+  }
+  tr:nth-child(even) td { background: var(--cream); }
+  tr:nth-child(odd)  td { background: white; }
+  .td-left { text-align: left; }
+  .td-center { text-align: center; }
+  .td-bold { font-weight: 700; color: var(--brown-dark); }
+
+  /* Наша колонка */
+  .our-col { background: #FFF8F0 !important; font-weight: 700; color: var(--brown); }
+  .our-th   { background: var(--brown) !important; }
+
+  /* ─── MARKET: chart + table ─── */
+  .market-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+    align-items: start;
+  }
+
+  /* ─── BAR CHART (рост рынка) ─── */
+  .bar-chart {
+    background: var(--cream);
+    border-radius: 10px;
+    padding: 14px;
+  }
+  .bar-chart-title {
+    font-size: 10px; font-weight: 700; color: var(--brown);
+    margin-bottom: 12px;
+  }
+  .bars { display: flex; align-items: flex-end; gap: 6px; height: 100px; }
+  .bar-wrap { display: flex; flex-direction: column; align-items: center; flex: 1; }
+  .bar-val { font-size: 8px; font-weight: 700; color: var(--brown); margin-bottom: 2px; }
+  .bar {
+    width: 100%;
+    border-radius: 4px 4px 0 0;
+    position: relative;
+    min-height: 4px;
+  }
+  .bar-projected {
+    background: repeating-linear-gradient(
+      45deg, var(--brown-light), var(--brown-light) 3px, var(--cream2) 3px, var(--cream2) 6px
+    ) !important;
+    opacity: 0.8;
+  }
+  .bar-label { font-size: 8px; color: #777; margin-top: 4px; }
+
+  /* ─── ТРЕНДЫ ─── */
+  .trends-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .trend-card {
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 10px;
+  }
+  .trend-card strong { display: block; margin-bottom: 2px; font-size: 10px; }
+  .trend-opp  { background: var(--teal-light);   border-left: 3px solid var(--teal); }
+  .trend-thr  { background: #FFEBEE;              border-left: 3px solid var(--red); }
+
+  /* ─── PERSONA CARDS ─── */
+  .persona-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .persona-card {
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+  }
+  .persona-head {
+    padding: 16px 12px 12px;
+    text-align: center;
+    color: white;
+  }
+  .persona-avatar {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    border: 3px solid rgba(255,255,255,0.5);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px;
+    margin: 0 auto 8px;
+  }
+  .persona-name { font-size: 13px; font-weight: 700; }
+  .persona-role { font-size: 9px; opacity: 0.85; margin-top: 2px; }
+  .persona-body { padding: 10px 12px; background: white; }
+  .persona-row { display: flex; align-items: flex-start; gap: 6px; margin-bottom: 5px; font-size: 9.5px; }
+  .persona-key { font-weight: 700; min-width: 54px; color: #555; flex-shrink: 0; }
+  .persona-val { color: var(--gray); line-height: 1.4; }
+
+  /* ─── CHANNELS ─── */
+  .channel-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .channel-badge {
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  .channel-head {
+    padding: 10px 10px 8px;
+    display: flex; align-items: center; gap: 8px;
+    color: white;
+  }
+  .channel-icon { font-size: 18px; }
+  .channel-name { font-size: 11px; font-weight: 700; }
+  .channel-body {
+    padding: 8px 10px;
+    background: white;
+    font-size: 9px;
+    color: #555;
+    line-height: 1.5;
+  }
+
+  .tactics-block { margin-bottom: 10px; }
+  .tactics-head {
+    padding: 6px 12px;
+    border-radius: 6px 6px 0 0;
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+  }
+  .tactics-list {
+    border: 1px solid #eee;
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    overflow: hidden;
+  }
+  .tactic-row {
+    padding: 6px 12px 6px 20px;
+    font-size: 10px;
+    border-bottom: 1px solid #f0f0f0;
+    position: relative;
+  }
+  .tactic-row:last-child { border-bottom: none; }
+  .tactic-row::before {
+    content: '›';
+    position: absolute;
+    left: 8px;
+    color: var(--brown-light);
+    font-weight: 700;
+  }
+  .tactic-row:nth-child(even) { background: var(--cream); }
+
+  /* ─── CONTENT PLAN TABLE ─── */
+  .content-table th { font-size: 9px; padding: 6px 8px; }
+  .content-table td { padding: 5px 8px; font-size: 9.5px; }
+
+  .chan-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 8.5px;
+    font-weight: 700;
+  }
+  .chan-vk       { background: #E3F2FD; color: #1565C0; }
+  .chan-tg       { background: #E0F7FA; color: #00695C; }
+  .chan-2gis     { background: #E8EAF6; color: #303F9F; }
+  .chan-yandex   { background: #FFF3E0; color: #E65100; }
+  .chan-offline  { background: #E8F5E9; color: #2E7D32; }
+  .chan-all      { background: var(--cream2); color: var(--brown); }
+
+  .week-1 { background: #FFF9C4 !important; }
+  .week-2 { background: #F3E5F5 !important; }
+  .week-3 { background: #E8F5E9 !important; }
+  .week-4 { background: #E3F2FD !important; }
+
+  .goal-tag {
+    font-size: 8px; font-weight: 700;
+    color: var(--green);
+  }
+
+  /* ─── BUDGET ─── */
+  .budget-layout {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 16px;
+    margin-top: 12px;
+    align-items: start;
+  }
+
+  /* PIE CHART (CSS) */
+  .pie-wrap {
+    background: var(--cream);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .pie-title {
+    font-size: 10px; font-weight: 700; color: var(--brown);
+    margin-bottom: 12px;
+  }
+  .pie-container {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+  .pie-chart {
+    width: 110px; height: 110px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: conic-gradient(
+      #6A1B9A   0%   21.8%,
+      #C62828  21.8%  49.1%,
+      #A0522D  49.1%  63.6%,
+      #007568  63.6%  70.9%,
+      #1565C0  70.9%  89.1%,
+      #2E7D32  89.1%  96.4%,
+      #795548  96.4% 100%
+    );
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    position: relative;
+  }
+  .pie-chart::after {
+    content: '55 000 ₽';
+    position: absolute;
+    inset: 25%;
+    background: white;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 7.5px; font-weight: 800;
+    color: var(--brown-dark);
+    text-align: center;
+  }
+  .pie-legend { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+  .pie-item {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 8.5px; color: var(--gray);
+  }
+  .pie-dot {
+    width: 8px; height: 8px;
+    border-radius: 2px; flex-shrink: 0;
+  }
+  .pie-name { flex: 1; }
+  .pie-pct  { font-weight: 700; color: var(--brown-dark); }
+
+  /* ─── PROGRESS BARS ─── */
+  .progress-section { }
+  .progress-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .progress-label {
+    font-size: 9.5px; color: var(--gray);
+    min-width: 140px; flex-shrink: 0;
+  }
+  .progress-track {
+    flex: 1;
+    height: 10px;
+    background: #E0E0E0;
+    border-radius: 5px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 5px;
+    transition: width 0.3s;
+  }
+  .progress-vals {
+    font-size: 8.5px; font-weight: 700;
+    color: var(--brown-dark);
+    min-width: 90px;
+    text-align: right;
+  }
+
+  /* ─── ROADMAP ─── */
+  .roadmap { display: flex; gap: 0; margin-top: 12px; }
+  .roadmap-item {
+    flex: 1;
+    position: relative;
+    padding: 14px 14px 14px 20px;
+  }
+  .roadmap-item:not(:last-child)::after {
+    content: '›';
+    position: absolute;
+    right: -10px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 22px;
+    color: var(--brown-light);
+    font-weight: 900;
+    z-index: 1;
+  }
+  .roadmap-month {
+    font-size: 11px; font-weight: 800;
+    color: white; margin-bottom: 4px;
+  }
+  .roadmap-focus {
+    font-size: 10px; font-weight: 700;
+    color: rgba(255,255,255,0.85); margin-bottom: 6px;
+  }
+  .roadmap-text {
+    font-size: 9px;
+    color: rgba(255,255,255,0.75);
+    line-height: 1.5;
+  }
+
+  /* ─── KPI TABLE ─── */
+  .kpi-month-1 { font-weight: 600; color: var(--green); }
+  .kpi-month-2 { font-weight: 700; color: var(--teal); }
+  .kpi-month-3 { font-weight: 800; color: var(--orange); }
+
+  /* ─── COMPETITOR BADGE ─── */
+  .comp-row-header { background: var(--brown-dark) !important; }
+  .comp-row-header td { color: white !important; font-weight: 700; }
+  .comp-weak { color: var(--red); font-size: 10px; }
+  .comp-our  { color: var(--green); font-size: 10px; font-weight: 700; }
+
+  /* ─── FOOTER ─── */
+  .doc-footer {
+    background: var(--brown-dark);
+    padding: 8px 18mm;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 8.5px;
+    color: rgba(255,255,255,0.6);
+  }
+  .doc-footer strong { color: var(--brown-light); }
+
+  /* ─── WEEK LEGEND ─── */
+  .week-legend {
+    display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;
+  }
+  .wl-item {
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 8.5px; font-weight: 600;
+    color: var(--gray);
+  }
+
+  /* ─── DISCLAIMER ─── */
+  .disclaimer {
+    background: var(--cream);
+    border-top: 3px solid var(--brown-light);
+    padding: 10px 14px;
+    font-size: 9px;
+    color: #888;
+    text-align: center;
+    margin-top: 16px;
+    border-radius: 0 0 6px 6px;
+  }
+
+  /* ─── UTILS ─── */
+  .mt-8  { margin-top: 8px; }
+  .mb-8  { margin-bottom: 8px; }
+  .mt-12 { margin-top: 12px; }
+  .bold  { font-weight: 700; }
+  .text-brown { color: var(--brown); }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════ ОБЛОЖКА ════════════════════════════════ -->
+<div class="cover">
+  <div class="cover-grid"></div>
+  <div class="cover-top-bar"></div>
+
+  <div class="cover-content">
+    <!-- CSS кофейная чашка -->
+    <div class="coffee-cup">
+      <div class="cup-steam">
+        <div class="steam-line"></div>
+        <div class="steam-line"></div>
+        <div class="steam-line"></div>
+      </div>
+      <div class="cup-body">
+        <div class="cup-handle"></div>
+      </div>
+      <div class="cup-saucer"></div>
+    </div>
+
+    <div class="cover-tag">Маркетинговый план · Демо</div>
+    <div class="cover-title">КОФЕ ХАУС</div>
+    <div class="cover-subtitle">Стратегия продвижения</div>
+    <div class="cover-period">Июль — Сентябрь 2026 · Махачкала</div>
+
+    <div class="cover-stats">
+      <div class="cover-stat">
+        <span class="cover-stat-val">450 ₽</span>
+        <span class="cover-stat-lbl">Средний чек</span>
+      </div>
+      <div class="cover-stat">
+        <span class="cover-stat-val">1.2M ₽</span>
+        <span class="cover-stat-lbl">Выручка / мес</span>
+      </div>
+      <div class="cover-stat">
+        <span class="cover-stat-val">55 тыс</span>
+        <span class="cover-stat-lbl">Бюджет / мес</span>
+      </div>
+      <div class="cover-stat">
+        <span class="cover-stat-val">+30%</span>
+        <span class="cover-stat-lbl">Цель роста</span>
+      </div>
+      <div class="cover-stat">
+        <span class="cover-stat-val">180%+</span>
+        <span class="cover-stat-lbl">Цель ROI</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="cover-bottom-bar">
+    <span>ВКонтакте</span><span class="sep">·</span>
+    <span>Telegram</span><span class="sep">·</span>
+    <span>2ГИС</span><span class="sep">·</span>
+    <span>Яндекс.Директ</span><span class="sep">·</span>
+    <span>Флаеры</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════ СТРАНИЦА 2: РЕЗЮМЕ + РЫНОК ═══════════ -->
+<div class="section-page">
+
+  <!-- 1. РЕЗЮМЕ -->
+  <div class="sec-header">
+    <div class="sec-num">1</div>
+    <div class="sec-title">Резюме проекта</div>
+    <div class="sec-icon">☕</div>
+  </div>
+
+  <p style="font-size:11px; line-height:1.6; margin-bottom:10px;">
+    Кофейня <strong>«Кофе Хаус»</strong> — камерное заведение в центре Махачкалы.
+    Концепция: авторский кофе, домашняя выпечка, уютная атмосфера для работы и встреч.
+    40 мест · 08:00–22:00 · Халяль-меню · Wi-Fi + розетки.
+  </p>
+
+  <div class="stat-grid">
+    <div class="stat-box" style="background:linear-gradient(135deg,#6F3B1A,#A0522D)">
+      <span class="stat-val">450 ₽</span>
+      <span class="stat-lbl">Средний чек</span>
+    </div>
+    <div class="stat-box" style="background:linear-gradient(135deg,#1B5E20,#2E7D32)">
+      <span class="stat-val">1.2M</span>
+      <span class="stat-lbl">Выручка / мес</span>
+    </div>
+    <div class="stat-box" style="background:linear-gradient(135deg,#00695C,#00897B)">
+      <span class="stat-val">55 тыс</span>
+      <span class="stat-lbl">Бюджет / мес</span>
+    </div>
+    <div class="stat-box" style="background:linear-gradient(135deg,#4A148C,#7B1FA2)">
+      <span class="stat-val">+30%</span>
+      <span class="stat-lbl">Цель роста</span>
+    </div>
+    <div class="stat-box" style="background:linear-gradient(135deg,#BF360C,#E64A19)">
+      <span class="stat-val">180%</span>
+      <span class="stat-lbl">ROI цель</span>
+    </div>
+  </div>
+
+  <div class="sub-h">Ключевые цели на квартал</div>
+  <div class="goals-list">
+    <div class="goal-row"><span class="goal-val">50 000+</span><span class="goal-lbl">уникальных пользователей через digital-каналы</span></div>
+    <div class="goal-row"><span class="goal-val">300+</span><span class="goal-lbl">новых гостей через 2ГИС и Яндекс.Карты</span></div>
+    <div class="goal-row"><span class="goal-val">2 000</span><span class="goal-lbl">подписчиков ВКонтакте и в Telegram-канале</span></div>
+    <div class="goal-row"><span class="goal-val">4.8★</span><span class="goal-lbl">средний рейтинг на картографических сервисах</span></div>
+    <div class="goal-row"><span class="goal-val">180%+</span><span class="goal-lbl">ROI маркетинговых вложений за квартал</span></div>
+  </div>
+
+  <!-- 2. РЫНОК -->
+  <div class="sec-header" style="margin-top:18px;">
+    <div class="sec-num">2</div>
+    <div class="sec-title">Анализ рынка и ниши</div>
+    <div class="sec-icon">📈</div>
+  </div>
+
+  <div class="market-row">
+    <div class="bar-chart">
+      <div class="bar-chart-title">Рост числа кофеен в Махачкале, 2021–2026</div>
+      <div class="bars">
+        <div class="bar-wrap"><div class="bar-val">28</div><div class="bar" style="height:28%;background:var(--brown)"></div><div class="bar-label">2021</div></div>
+        <div class="bar-wrap"><div class="bar-val">38</div><div class="bar" style="height:38%;background:var(--brown)"></div><div class="bar-label">2022</div></div>
+        <div class="bar-wrap"><div class="bar-val">52</div><div class="bar" style="height:52%;background:var(--brown)"></div><div class="bar-label">2023</div></div>
+        <div class="bar-wrap"><div class="bar-val">68</div><div class="bar" style="height:68%;background:var(--brown-mid)"></div><div class="bar-label">2024</div></div>
+        <div class="bar-wrap"><div class="bar-val">90</div><div class="bar" style="height:90%;background:var(--brown-light)"></div><div class="bar-label">2025</div></div>
+        <div class="bar-wrap"><div class="bar-val">120</div><div class="bar bar-projected" style="height:100%"></div><div class="bar-label">2026*</div></div>
+      </div>
+    </div>
+
+    <table>
+      <tr><th colspan="2">Параметры рынка</th></tr>
+      <tr><td>Население Махачкалы</td><td class="td-center td-bold">700 000+</td></tr>
+      <tr><td>Молодёжь 18–35 лет</td><td class="td-center td-bold">238 000 (34%)</td></tr>
+      <tr><td>Кофеен в городе</td><td class="td-center td-bold">90+</td></tr>
+      <tr><td>Средний чек, сегмент</td><td class="td-center td-bold">350–600 ₽</td></tr>
+      <tr><td>Рост рынка кофе РФ</td><td class="td-center td-bold">+12% г/г</td></tr>
+      <tr><td>Доля доставки</td><td class="td-center td-bold">27%</td></tr>
+      <tr><td>Рост нашего сегмента</td><td class="td-center td-bold">+221% за 5 лет</td></tr>
+    </table>
+  </div>
+
+  <div class="trends-grid">
+    <div class="trend-card trend-opp"><strong>☕ Кофейная культура</strong>Рост интереса к альтернативным методам заваривания</div>
+    <div class="trend-card trend-opp"><strong>💻 Удалённая работа</strong>Спрос на «третье место» с Wi-Fi и розетками у каждого стола</div>
+    <div class="trend-card trend-opp"><strong>📱 Соцсети</strong>Фотогеничный интерьер = бесплатный UGC + органический охват</div>
+    <div class="trend-card trend-opp"><strong>🌙 Халяль-запрос</strong>Аудитория ждёт заведений без алкоголя с качеством</div>
+    <div class="trend-card trend-opp"><strong>🛵 Доставка</strong>+20–30% оборота через Яндекс.Еда / Delivery Club</div>
+    <div class="trend-card trend-thr"><strong>⚠️ Угроза: конкуренты</strong>Низкий порог входа — активный рост числа кофеен</div>
+  </div>
+
+  <div class="doc-footer">
+    <strong>КОФЕ ХАУС · Маркетинговый план 2026</strong>
+    <span>Страница 2 из 5</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════ СТРАНИЦА 3: ЦА + КОНКУРЕНТЫ ════════════ -->
+<div class="section-page">
+
+  <!-- 3. ЦЕЛЕВАЯ АУДИТОРИЯ -->
+  <div class="sec-header">
+    <div class="sec-num">3</div>
+    <div class="sec-title">Целевая аудитория — 3 портрета</div>
+    <div class="sec-icon">👥</div>
+  </div>
+
+  <div class="persona-grid">
+    <!-- Амир -->
+    <div class="persona-card">
+      <div class="persona-head" style="background:linear-gradient(135deg,#1565C0,#1976D2)">
+        <div class="persona-avatar">👨‍💻</div>
+        <div class="persona-name">Амир, 22 года</div>
+        <div class="persona-role">Студент / Фрилансер</div>
+      </div>
+      <div class="persona-body">
+        <div class="persona-row"><span class="persona-key">Возраст:</span><span class="persona-val">20–26 лет, мужчина</span></div>
+        <div class="persona-row"><span class="persona-key">Доход:</span><span class="persona-val">25–50 тыс. ₽</span></div>
+        <div class="persona-row"><span class="persona-key">Частота:</span><span class="persona-val">3–4 раза в неделю, 2–3 ч</span></div>
+        <div class="persona-row"><span class="persona-key">Боль:</span><span class="persona-val">Нет нормального места для работы дома</span></div>
+        <div class="persona-row"><span class="persona-key">Каналы:</span><span class="persona-val">ВКонтакте, Telegram, 2ГИС</span></div>
+        <div class="persona-row"><span class="persona-key">Крючок:</span><span class="persona-val">Wi-Fi + розетки + тихая зона</span></div>
+        <div class="persona-row"><span class="persona-key">LTV/мес:</span><span class="persona-val" style="color:var(--green);font-weight:700">~4 800 ₽</span></div>
+      </div>
+    </div>
+
+    <!-- Патимат -->
+    <div class="persona-card">
+      <div class="persona-head" style="background:linear-gradient(135deg,#6A1B9A,#8E24AA)">
+        <div class="persona-avatar">👩‍👧</div>
+        <div class="persona-name">Патимат, 31 год</div>
+        <div class="persona-role">Молодая мама / Part-time</div>
+      </div>
+      <div class="persona-body">
+        <div class="persona-row"><span class="persona-key">Возраст:</span><span class="persona-val">27–38 лет, женщина</span></div>
+        <div class="persona-row"><span class="persona-key">Доход:</span><span class="persona-val">Семья 70–100 тыс. ₽</span></div>
+        <div class="persona-row"><span class="persona-key">Частота:</span><span class="persona-val">1–2 раза в неделю</span></div>
+        <div class="persona-row"><span class="persona-key">Боль:</span><span class="persona-val">Хочет красивое место без суеты</span></div>
+        <div class="persona-row"><span class="persona-key">Каналы:</span><span class="persona-val">ВКонтакте, рекомендации</span></div>
+        <div class="persona-row"><span class="persona-key">Крючок:</span><span class="persona-val">Детский уголок + фотозона + халяль</span></div>
+        <div class="persona-row"><span class="persona-key">LTV/мес:</span><span class="persona-val" style="color:var(--green);font-weight:700">~4 200 ₽</span></div>
+      </div>
+    </div>
+
+    <!-- Расул -->
+    <div class="persona-card">
+      <div class="persona-head" style="background:linear-gradient(135deg,#00695C,#00897B)">
+        <div class="persona-avatar">👔</div>
+        <div class="persona-name">Расул, 38 лет</div>
+        <div class="persona-role">Предприниматель</div>
+      </div>
+      <div class="persona-body">
+        <div class="persona-row"><span class="persona-key">Возраст:</span><span class="persona-val">32–45 лет, мужчина</span></div>
+        <div class="persona-row"><span class="persona-key">Доход:</span><span class="persona-val">120 000+ ₽</span></div>
+        <div class="persona-row"><span class="persona-key">Частота:</span><span class="persona-val">Деловые встречи + завтраки</span></div>
+        <div class="persona-row"><span class="persona-key">Боль:</span><span class="persona-val">Нет достойного места для переговоров</span></div>
+        <div class="persona-row"><span class="persona-key">Каналы:</span><span class="persona-val">Яндекс.Карты, 2ГИС (топ)</span></div>
+        <div class="persona-row"><span class="persona-key">Крючок:</span><span class="persona-val">VIP-зона + экспресс 5 мин + бронь</span></div>
+        <div class="persona-row"><span class="persona-key">LTV/мес:</span><span class="persona-val" style="color:var(--green);font-weight:700">~6 000 ₽</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. КОНКУРЕНТЫ -->
+  <div class="sec-header">
+    <div class="sec-num">4</div>
+    <div class="sec-title">Анализ конкурентов</div>
+    <div class="sec-icon">🏆</div>
+  </div>
+
+  <p style="font-size:10px;margin-bottom:8px;color:#666;">
+    Анализ трёх прямых конкурентов в радиусе 1,5 км. Данные: mystery shopping + 2ГИС + открытые источники.
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Параметр</th>
+        <th>Barista Point</th>
+        <th>Coffee Lab</th>
+        <th>Дагкофе</th>
+        <th class="our-th">Кофе Хаус (мы)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class="td-bold">Позиционирование</td><td>Масс-маркет</td><td>Specialty, дорого</td><td>Сети, дёшево</td><td class="our-col">Specialty + уют + халяль</td></tr>
+      <tr><td class="td-bold">Средний чек</td><td>250–350 ₽</td><td>550–750 ₽</td><td>200–300 ₽</td><td class="our-col">400–500 ₽</td></tr>
+      <tr><td class="td-bold">Рейтинг 2ГИС</td><td>4.5★</td><td>4.7★</td><td>4.3★</td><td class="our-col">Цель: 4.8★</td></tr>
+      <tr><td class="td-bold">Соцсети</td><td>ВК: 2 800</td><td>ВК: 6 500</td><td>ВК: 1 200</td><td class="our-col">Цель: 2 000+</td></tr>
+      <tr><td class="td-bold">Wi-Fi</td><td class="comp-weak">✗ Нет</td><td class="comp-weak">✗ Нет</td><td class="comp-weak">✗ Нет</td><td class="our-col comp-our">✓ Да</td></tr>
+      <tr><td class="td-bold">Детская зона</td><td class="comp-weak">✗ Нет</td><td class="comp-weak">✗ Нет</td><td class="comp-weak">✗ Нет</td><td class="our-col comp-our">✓ Да</td></tr>
+      <tr><td class="td-bold">Халяль</td><td class="comp-weak">✗ Нет</td><td class="comp-weak">Частично</td><td class="comp-weak">✗ Нет</td><td class="our-col comp-our">✓ Полностью</td></tr>
+      <tr><td class="td-bold">Слабость</td><td>Нет атмосферы</td><td>Слишком дорого</td><td>Слабый контент</td><td class="our-col" style="color:var(--orange)">Новичок</td></tr>
+    </tbody>
+  </table>
+
+  <div style="background:var(--green-light);border-left:4px solid var(--green);padding:10px 14px;border-radius:0 8px 8px 0;font-size:10.5px;">
+    <strong style="color:var(--green)">УТП «Кофе Хаус»:</strong>
+    Specialty-кофе по демократичной цене + Wi-Fi + халяль + детская зона —
+    ни один конкурент не закрывает все четыре запроса одновременно.
+  </div>
+
+  <div class="doc-footer">
+    <strong>КОФЕ ХАУС · Маркетинговый план 2026</strong>
+    <span>Страница 3 из 5</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════ СТРАНИЦА 4: КАНАЛЫ + КОНТЕНТ ════════════ -->
+<div class="section-page">
+
+  <!-- 5. КАНАЛЫ -->
+  <div class="sec-header">
+    <div class="sec-num">5</div>
+    <div class="sec-title">Каналы продвижения</div>
+    <div class="sec-icon">📣</div>
+  </div>
+
+  <div class="channel-grid">
+    <div class="channel-badge">
+      <div class="channel-head" style="background:linear-gradient(135deg,#1565C0,#1E88E5)">
+        <span class="channel-icon">🔵</span>
+        <span class="channel-name">ВКонтакте</span>
+      </div>
+      <div class="channel-body">Основная SMM-площадка. Посты, Stories, рилсы. Таргет 18–40 лет, Махачкала.</div>
+    </div>
+    <div class="channel-badge">
+      <div class="channel-head" style="background:linear-gradient(135deg,#00695C,#00897B)">
+        <span class="channel-icon">✈️</span>
+        <span class="channel-name">Telegram</span>
+      </div>
+      <div class="channel-body">Канал «Кофе Хаус live»: меню дня, акции, анонсы, опросы. Прямой контакт с аудиторией.</div>
+    </div>
+    <div class="channel-badge">
+      <div class="channel-head" style="background:linear-gradient(135deg,#283593,#3949AB)">
+        <span class="channel-icon">📍</span>
+        <span class="channel-name">2ГИС</span>
+      </div>
+      <div class="channel-body">Карточка на 100%: 15+ фото, меню, Wi-Fi. QR-коды на столах → отзывы. Цель: 4.8★.</div>
+    </div>
+    <div class="channel-badge">
+      <div class="channel-head" style="background:linear-gradient(135deg,#BF360C,#E64A19)">
+        <span class="channel-icon">🎯</span>
+        <span class="channel-name">Яндекс.Директ</span>
+      </div>
+      <div class="channel-body">Геозапросы радиус 2 км: «кофейня рядом», «кофе с собой». 15 000 ₽/мес, CPL ≤ 200 ₽.</div>
+    </div>
+  </div>
+
+  <!-- Тактики -->
+  <div class="tactics-block">
+    <div class="tactics-head" style="background:linear-gradient(90deg,#1565C0,#1E88E5)">🔵 ВКонтакте — тактики</div>
+    <div class="tactics-list">
+      <div class="tactic-row">5 постов в неделю: 3 видео-клипа + 2 карусели с фото блюд</div>
+      <div class="tactic-row">Stories ежедневно: опросы, меню дня, «за кулисами», анонсы</div>
+      <div class="tactic-row">Хэштеги: #кофемахачкала #кофехаус #кафемахачкала</div>
+      <div class="tactic-row">Коллаборации с 2–3 местными микроинфлюенсерами (10–30 тыс. подп.)</div>
+      <div class="tactic-row">Таргетированная реклама на аудиторию Махачкалы 18–40 лет</div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+    <div class="tactics-block" style="margin-bottom:0">
+      <div class="tactics-head" style="background:linear-gradient(90deg,#00695C,#00897B)">✈️ Telegram — тактики</div>
+      <div class="tactics-list">
+        <div class="tactic-row">Канал «Кофе Хаус live» — ежедневный контент</div>
+        <div class="tactic-row">Меню дня и спецпредложения в 8:00</div>
+        <div class="tactic-row">Бот-помощник: бронь стола, состав блюд</div>
+        <div class="tactic-row">Опросы и голосования за новые напитки</div>
+        <div class="tactic-row">Реферальная программа через Telegram</div>
+      </div>
+    </div>
+    <div class="tactics-block" style="margin-bottom:0">
+      <div class="tactics-head" style="background:linear-gradient(90deg,#BF360C,#E64A19)">🎯 Яндекс.Директ + 2ГИС</div>
+      <div class="tactics-list">
+        <div class="tactic-row">Кампания «Кофейня рядом», геотаргетинг 2 км</div>
+        <div class="tactic-row">Ключи: «кофе с собой», «где выпить кофе центр»</div>
+        <div class="tactic-row">Заполнить 2ГИС на 100%: фото, Wi-Fi, парковка</div>
+        <div class="tactic-row">QR на столах → отзыв на 2ГИС (цель 130 отзывов)</div>
+        <div class="tactic-row">Еженедельный мониторинг позиций в выдаче</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. КОНТЕНТ-ПЛАН -->
+  <div class="sec-header">
+    <div class="sec-num">6</div>
+    <div class="sec-title">Контент-план — июль 2026</div>
+    <div class="sec-icon">📅</div>
+  </div>
+
+  <table class="content-table">
+    <thead>
+      <tr>
+        <th style="width:36px">Нед.</th>
+        <th style="width:50px">Дата</th>
+        <th style="width:72px">Канал</th>
+        <th style="width:64px">Формат</th>
+        <th>Тема / идея</th>
+        <th style="width:80px">Цель</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="week-1"><td class="td-center td-bold">W1</td><td>1 июл</td><td><span class="chan-tag chan-vk">ВКонтакте</span></td><td>Клип</td><td>Открытие сезона: «Летнее меню уже здесь»</td><td class="goal-tag">Охват</td></tr>
+      <tr class="week-1"><td class="td-center td-bold">W1</td><td>2 июл</td><td><span class="chan-tag chan-tg">Telegram</span></td><td>Опрос</td><td>«Какой кофе любите летом?» + меню дня</td><td class="goal-tag">Вовлечение</td></tr>
+      <tr class="week-1"><td class="td-center td-bold">W1</td><td>3 июл</td><td><span class="chan-tag chan-2gis">2ГИС</span></td><td>Акция</td><td>Скидка 15% каждый вторник до 12:00</td><td class="goal-tag">Визиты</td></tr>
+      <tr class="week-1"><td class="td-center td-bold">W1</td><td>4 июл</td><td><span class="chan-tag chan-vk">ВКонтакте</span></td><td>Карусель</td><td>5 причин работать в Кофе Хаус</td><td class="goal-tag">Подписки</td></tr>
+      <tr class="week-1"><td class="td-center td-bold">W1</td><td>5 июл</td><td><span class="chan-tag chan-vk">ВКонтакте</span></td><td>Клип</td><td>Бариста готовит колд-брю — таймлапс</td><td class="goal-tag">Охват</td></tr>
+
+      <tr class="week-2"><td class="td-center td-bold">W2</td><td>8 июл</td><td><span class="chan-tag chan-vk">ВКонтакте</span></td><td>Клип</td><td>Репост гостя + благодарность (UGC)</td><td class="goal-tag">Доверие</td></tr>
+      <tr class="week-2"><td class="td-center td-bold">W2</td><td>9 июл</td><td><span class="chan-tag chan-yandex">Яндекс</span></td><td>Директ</td><td>Запуск кампании «Кофейня рядом»</td><td class="goal-tag">Трафик</td></tr>
+      <tr class="week-2"><td class="td-center td-bold">W2</td><td>10 июл</td><td><span class="chan-tag chan-vk">ВКонтакте</span></td><td>Карусель</td><td>Гайд: как мы варим эспрессо</td><td class="goal-tag">Экспертиза</td></tr>
+      <tr class="week-2"><td class="td-center td-bold">W2</td><td>11 июл</td><td><span class="chan-tag chan-tg">Telegram</span></td><td>Stories</td><td>За кулисами: утро до открытия кофейни</td><td class="goal-tag">Близость</td></tr>
+      <tr class="week-2"><td class="td-center td-bold">W2</td><td>12 июл</td><td><span class="chan-tag chan-offline">Офлайн</span></td><td>Флаеры</td><td>Раздача у ДГТУ и ДГУ</td><td class="goal-tag">Новые гости</td></tr>
+
+      <tr class="week-3"><td class="td-center td-bold">W3</td><td>15 июл</td><td><span class="chan-tag chan-vk">ВКонтакте</span></td><td>Клип</td><td>Инфлюенсер Алия: обзор меню</td><td class="goal-tag">Охват</td></tr>
+      <tr class="week-3"><td class="td-center td-bold">W3</td><td>16 июл</td><td><span class="chan-tag chan-vk">ВКонтакте</span></td><td>Пост</td><td>История бренда: почему «Кофе Хаус»?</td><td class="goal-tag">Лояльность</td></tr>
+      <tr class="week-3"><td class="td-center td-bold">W3</td><td>17 июл</td><td><span class="chan-tag chan-2gis">2ГИС</span></td><td>Фото</td><td>Обновить фото летней веранды (15+ фото)</td><td class="goal-tag">Конверсия</td></tr>
+      <tr class="week-3"><td class="td-center td-bold">W3</td><td>18 июл</td><td><span class="chan-tag chan-tg">Telegram</span></td><td>Интервью</td><td>«День бариста» — мини-видео с командой</td><td class="goal-tag">Вовлечение</td></tr>
+      <tr class="week-3"><td class="td-center td-bold">W3</td><td>19 июл</td><td><span class="chan-tag chan-tg">Telegram</span></td><td>Опрос</td><td>Голосование за новый десерт в меню</td><td class="goal-tag">UGC</td></tr>
+
+      <tr class="week-4"><td class="td-center td-bold">W4</td><td>22 июл</td><td><span class="chan-tag chan-vk">ВКонтакте</span></td><td>Карусель</td><td>Топ-5 летних напитков: рейтинг гостей</td><td class="goal-tag">Охват</td></tr>
+      <tr class="week-4"><td class="td-center td-bold">W4</td><td>23 июл</td><td><span class="chan-tag chan-vk">ВКонтакте</span></td><td>Клип</td><td>Тайм-лапс: аншлаг в пятницу вечером</td><td class="goal-tag">Соц. доказат.</td></tr>
+      <tr class="week-4"><td class="td-center td-bold">W4</td><td>24 июл</td><td><span class="chan-tag chan-yandex">Яндекс</span></td><td>Аналитика</td><td>Ревизия Директ: отключить нерабочие ключи</td><td class="goal-tag">ROI</td></tr>
+      <tr class="week-4"><td class="td-center td-bold">W4</td><td>25 июл</td><td><span class="chan-tag chan-tg">Telegram</span></td><td>Анонс</td><td>Каждый 6-й кофе в подарок — запуск бонусов</td><td class="goal-tag">Удержание</td></tr>
+      <tr class="week-4"><td class="td-center td-bold">W4</td><td>26 июл</td><td><span class="chan-tag chan-all">Все каналы</span></td><td>Итоги</td><td>Итоги июля: охваты, гости, выручка</td><td class="goal-tag">Оптимизация</td></tr>
+    </tbody>
+  </table>
+
+  <div class="week-legend">
+    <div class="wl-item week-1">W1 — Запуск</div>
+    <div class="wl-item week-2">W2 — Рост</div>
+    <div class="wl-item week-3">W3 — Инфлюенсеры</div>
+    <div class="wl-item week-4">W4 — Итоги</div>
+  </div>
+
+  <div class="doc-footer">
+    <strong>КОФЕ ХАУС · Маркетинговый план 2026</strong>
+    <span>Страница 4 из 5</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════ СТРАНИЦА 5: БЮДЖЕТ + KPI ════════════════ -->
+<div class="section-page">
+
+  <!-- 7. БЮДЖЕТ -->
+  <div class="sec-header">
+    <div class="sec-num">7</div>
+    <div class="sec-title">Маркетинговый бюджет</div>
+    <div class="sec-icon">💰</div>
+  </div>
+
+  <div class="budget-layout">
+    <!-- Таблица -->
+    <table>
+      <thead>
+        <tr>
+          <th>Статья</th>
+          <th>Тип</th>
+          <th>Сумма</th>
+          <th>%</th>
+          <th>Результат</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>ВКонтакте таргет</td><td class="td-center">Реклама</td><td class="td-center td-bold">12 000 ₽</td><td class="td-center">21.8%</td><td>+500–800 охватов/сут</td></tr>
+        <tr><td>Яндекс.Директ</td><td class="td-center">Реклама</td><td class="td-center td-bold">15 000 ₽</td><td class="td-center">27.3%</td><td>150–200 кликов/мес</td></tr>
+        <tr><td>Инфлюенсеры (×2)</td><td class="td-center">Размещение</td><td class="td-center td-bold">8 000 ₽</td><td class="td-center">14.5%</td><td>5 000–10 000 охват</td></tr>
+        <tr><td>Флаеры (2 000 шт.)</td><td class="td-center">Полиграфия</td><td class="td-center td-bold">4 000 ₽</td><td class="td-center">7.3%</td><td>80–120 новых гостей</td></tr>
+        <tr><td>SMM (ведение)</td><td class="td-center">Услуга</td><td class="td-center td-bold">10 000 ₽</td><td class="td-center">18.2%</td><td>20 постов + видео</td></tr>
+        <tr><td>Фотосъёмка (2 сес.)</td><td class="td-center">Произв-во</td><td class="td-center td-bold">4 000 ₽</td><td class="td-center">7.3%</td><td>60+ фото для контента</td></tr>
+        <tr><td>2ГИС Premium</td><td class="td-center">Подписка</td><td class="td-center td-bold">2 000 ₽</td><td class="td-center">3.6%</td><td>Приоритет в выдаче</td></tr>
+        <tr style="background:var(--cream2)!important">
+          <td colspan="2" class="td-bold" style="font-size:12px">ИТОГО</td>
+          <td class="td-center td-bold" style="font-size:13px;color:var(--brown-dark)">55 000 ₽</td>
+          <td class="td-center td-bold">100%</td>
+          <td>Комплексное присутствие</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Пай-чарт -->
+    <div class="pie-wrap">
+      <div class="pie-title">Распределение бюджета</div>
+      <div class="pie-container">
+        <div class="pie-chart"></div>
+        <div class="pie-legend">
+          <div class="pie-item"><div class="pie-dot" style="background:#6A1B9A"></div><span class="pie-name">ВК таргет</span><span class="pie-pct">21.8%</span></div>
+          <div class="pie-item"><div class="pie-dot" style="background:#C62828"></div><span class="pie-name">Яндекс.Директ</span><span class="pie-pct">27.3%</span></div>
+          <div class="pie-item"><div class="pie-dot" style="background:#A0522D"></div><span class="pie-name">Инфлюенсеры</span><span class="pie-pct">14.5%</span></div>
+          <div class="pie-item"><div class="pie-dot" style="background:#007568"></div><span class="pie-name">Флаеры</span><span class="pie-pct">7.3%</span></div>
+          <div class="pie-item"><div class="pie-dot" style="background:#1565C0"></div><span class="pie-name">SMM</span><span class="pie-pct">18.2%</span></div>
+          <div class="pie-item"><div class="pie-dot" style="background:#2E7D32"></div><span class="pie-name">Фотосъёмка</span><span class="pie-pct">7.3%</span></div>
+          <div class="pie-item"><div class="pie-dot" style="background:#795548"></div><span class="pie-name">2ГИС Premium</span><span class="pie-pct">3.6%</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. KPI -->
+  <div class="sec-header">
+    <div class="sec-num">8</div>
+    <div class="sec-title">KPI и метрики успеха</div>
+    <div class="sec-icon">🎯</div>
+  </div>
+
+  <div class="sub-h">Прогресс-бары — цели к сентябрю 2026</div>
+
+  <div class="progress-section">
+    <div class="progress-item">
+      <div class="progress-label">ВК + TG подписчики</div>
+      <div class="progress-track"><div class="progress-fill" style="width:0%;background:linear-gradient(90deg,#6A1B9A,#9C27B0)"></div></div>
+      <div class="progress-vals">0 → 2 000</div>
+    </div>
+    <div class="progress-item">
+      <div class="progress-label">Охват видео (ср./пост)</div>
+      <div class="progress-track"><div class="progress-fill" style="width:0%;background:linear-gradient(90deg,#1565C0,#1E88E5)"></div></div>
+      <div class="progress-vals">0 → 10 000</div>
+    </div>
+    <div class="progress-item">
+      <div class="progress-label">Клики Яндекс.Директ</div>
+      <div class="progress-track"><div class="progress-fill" style="width:0%;background:linear-gradient(90deg,#C62828,#E53935)"></div></div>
+      <div class="progress-vals">0 → 350 / мес</div>
+    </div>
+    <div class="progress-item">
+      <div class="progress-label">Рейтинг 2ГИС</div>
+      <div class="progress-track"><div class="progress-fill" style="width:86%;background:linear-gradient(90deg,#1565C0,#42A5F5)"></div></div>
+      <div class="progress-vals">4.3 → 4.8★</div>
+    </div>
+    <div class="progress-item">
+      <div class="progress-label">Число отзывов</div>
+      <div class="progress-track"><div class="progress-fill" style="width:9%;background:linear-gradient(90deg,#00695C,#26A69A)"></div></div>
+      <div class="progress-vals">12 → 130</div>
+    </div>
+    <div class="progress-item">
+      <div class="progress-label">ROI маркетинга</div>
+      <div class="progress-track"><div class="progress-fill" style="width:0%;background:linear-gradient(90deg,#E65100,#FF7043)"></div></div>
+      <div class="progress-vals">0 → 200%</div>
+    </div>
+    <div class="progress-item">
+      <div class="progress-label">Повторные визиты</div>
+      <div class="progress-track"><div class="progress-fill" style="width:0%;background:linear-gradient(90deg,#2E7D32,#4CAF50)"></div></div>
+      <div class="progress-vals">0 → 45%</div>
+    </div>
+  </div>
+
+  <div class="sub-h mt-8">Цели по месяцам</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Метрика</th>
+        <th style="background:#5C6BC0!important">Июль</th>
+        <th style="background:#2E7D32!important">Август</th>
+        <th style="background:#E65100!important">Сентябрь</th>
+        <th>Инструмент</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class="td-bold">ВК + TG подписчики</td><td class="td-center kpi-month-1">500</td><td class="td-center kpi-month-2">1 200</td><td class="td-center kpi-month-3">2 000</td><td>VK Insights / TG Stats</td></tr>
+      <tr><td class="td-bold">Охват видео</td><td class="td-center kpi-month-1">3 000</td><td class="td-center kpi-month-2">6 000</td><td class="td-center kpi-month-3">10 000</td><td>VK Insights</td></tr>
+      <tr><td class="td-bold">Клики Директ</td><td class="td-center kpi-month-1">150</td><td class="td-center kpi-month-2">250</td><td class="td-center kpi-month-3">350</td><td>Яндекс.Метрика</td></tr>
+      <tr><td class="td-bold">Рейтинг 2ГИС</td><td class="td-center kpi-month-1">4.6★</td><td class="td-center kpi-month-2">4.7★</td><td class="td-center kpi-month-3">4.8★</td><td>2ГИС кабинет</td></tr>
+      <tr><td class="td-bold">Отзывы (всего)</td><td class="td-center kpi-month-1">40</td><td class="td-center kpi-month-2">80</td><td class="td-center kpi-month-3">130</td><td>2ГИС + Яндекс</td></tr>
+      <tr><td class="td-bold">CPL (Директ)</td><td class="td-center kpi-month-1">≤ 200 ₽</td><td class="td-center kpi-month-2">≤ 180 ₽</td><td class="td-center kpi-month-3">≤ 150 ₽</td><td>Яндекс.Метрика</td></tr>
+      <tr><td class="td-bold">ROI маркетинга</td><td class="td-center kpi-month-1">120%</td><td class="td-center kpi-month-2">160%</td><td class="td-center kpi-month-3">200%</td><td>Таблица учёта</td></tr>
+    </tbody>
+  </table>
+
+  <!-- Roadmap -->
+  <div class="sub-h">Дорожная карта</div>
+  <div class="roadmap">
+    <div class="roadmap-item" style="background:linear-gradient(135deg,var(--brown-dark),var(--brown));border-radius:10px 0 0 10px">
+      <div class="roadmap-month">Июль 2026</div>
+      <div class="roadmap-focus">Запуск и фундамент</div>
+      <div class="roadmap-text">Настройка 2ГИС/Яндекс. Старт Директ. Фотосессия. Флаеры. Первые 10 отзывов. Запуск ВК + TG.</div>
+    </div>
+    <div class="roadmap-item" style="background:linear-gradient(135deg,#1B5E20,#2E7D32)">
+      <div class="roadmap-month">Август 2026</div>
+      <div class="roadmap-focus">Рост и вовлечение</div>
+      <div class="roadmap-text">Коллаборации с инфлюенсерами. A/B тест контента. Оптимизация Директ. Акции 2ГИС. 1 200 подп.</div>
+    </div>
+    <div class="roadmap-item" style="background:linear-gradient(135deg,#BF360C,#E64A19);border-radius:0 10px 10px 0">
+      <div class="roadmap-month">Сентябрь 2026</div>
+      <div class="roadmap-focus">Оптимизация и удержание</div>
+      <div class="roadmap-text">Программа лояльности. Перераспределение бюджета по ROI. Осенний сезон: тёплые напитки. ROI 200%.</div>
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    Документ подготовлен: <strong>Рустам, фриланс-маркетолог</strong> · trangvi801@gmail.com · 13.06.2026 · ДЕМО-версия для портфолио
+  </div>
+
+  <div class="doc-footer">
+    <strong>КОФЕ ХАУС · Маркетинговый план 2026</strong>
+    <span>Страница 5 из 5</span>
+  </div>
+</div>
+
+</body>
+</html>
