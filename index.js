@@ -30,7 +30,7 @@ async function askClaude(chatId, userMessage) {
   const history = await getHistory(chatId);
 
 const response = await groq.chat.completions.create({
-  model: 'llama3-70b-8192',
+  model: 'llama-3.3-70b-versatile',
   max_tokens: 2048,
   messages: [
     { role: 'system', content: SYSTEM_PROMPT },
