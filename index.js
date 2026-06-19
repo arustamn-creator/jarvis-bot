@@ -1,4 +1,5 @@
 require('dotenv').config();
+const { clearSession } = require('./jarvis-flights');
 
 const { registerFlightCommands } = require('./jarvis-flights');
 const TelegramBot = require('node-telegram-bot-api');
@@ -18,9 +19,9 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const SYSTEM_PROMPT =
-  'Ты умный и полезный ассистент по имени Jarvis. ' +
-  'Отвечай развёрнуто, по-русски. ' +
-  'Будь дружелюбным и помогай пользователю по любым вопросам.';
+  'Ты умный ассистент по имени Jarvis. ' +
+  'Отвечай кратко: 2-4 предложения, без длинных самопрезентаций. ' +
+  'Будь дружелюбным, по-русски, по делу.';
 
 // === Claude ===
 
@@ -105,7 +106,8 @@ function cleanupFiles(...files) {
 // === Команды ===
 
 bot.onText(/\/start/, async (msg) => {
-  await bot.sendMessage(
+await clearSession(msg.chat.id);
+await bot.sendMessage(
     msg.chat.id,
     '👋 Привет! Я *Jarvis* — ваш умный ИИ-ассистент.\n\n' +
     '💬 Напишите текстовое сообщение или отправьте голосовое — я отвечу!\n\n' +
