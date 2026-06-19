@@ -1,22 +1,20 @@
 require('dotenv').config();
-const { HttpsProxyAgent } = require('https-proxy-agent');
-const agent = new HttpsProxyAgent('http://127.0.0.1:12334');
+
 const { registerFlightCommands } = require('./jarvis-flights');
 const TelegramBot = require('node-telegram-bot-api');
-const Anthropic = require('@anthropic-ai/sdk');
+const Groq = require('groq-sdk');
 const OpenAI = require('openai');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
 const { saveMessage, getHistory } = require('./memory');
-const bot = new TelegramBot(process.env.TELEGRAM_TOKEN, { 
-  polling: true,
-  request: { agent }
+const bot = new TelegramBot(process.env.TELEGRAM_TOKEN, {
+  polling: true
 });
 
 registerFlightCommands(bot);
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const SYSTEM_PROMPT =
@@ -31,14 +29,16 @@ async function askClaude(chatId, userMessage) {
 
   const history = await getHistory(chatId);
 
-  const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 2048,
-    system: SYSTEM_PROMPT,
-    messages: history,
-  });
+const response = await groq.chat.completions.create({
+  model: 'llama3-70b-8192',
+  max_tokens: 2048,
+  messages: [
+    { role: 'system', content: SYSTEM_PROMPT },
+    ...history
+  ],
+});
 
-  const reply = response.content[0].text;
+ const reply = response.choices[0].message.content;
 
   await saveMessage(chatId, 'assistant', reply);
 
