@@ -527,7 +527,7 @@ function registerFlightCommands(bot) {
     if (!msg.text || msg.text.startsWith('/')) return;
     const chatId  = msg.chat.id;
     const session = getSession(chatId);
-    console.log('[DEBUG] session для', chatId, JSON.stringify(session));
+    
     if (!session.step) return;
 
     const text = msg.text.trim();
