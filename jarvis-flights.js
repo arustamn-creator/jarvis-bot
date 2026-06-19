@@ -18,6 +18,19 @@ const AVIASALES_TOKEN = process.env.AVIASALES_TOKEN;
 const API_BASE        = 'https://api.travelpayouts.com/v1';
 const DATA_FILE       = path.join(__dirname, 'memory_db', 'flights.json');
 const CURRENCY        = 'rub';
+const APIFY_TOKEN = process.env.APIFY_TOKEN;
+const APIFY_ACTOR_URL = 'https://api.apify.com/v2/actors/johnvc~google-flights-data-scraper-flight-and-price-search/run-sync-get-dataset-items';
+
+// Коды аэропортов СНГ — для них используем Aviasales
+const CIS_AIRPORTS = [
+  'MOW','LED','MCX','KZN','SVX','ROV','KRR','UFA','PEE','OVB',
+  'VVO','KHV','UUD','AER','GOJ','VOG','SCW','AAQ','EVN','TBS',
+  'GYD','ALA','TSE','NQZ','FRU','DYU','TAS','SKD','ASB','MSQ','KBP','ODS'
+];
+
+function isCisAirport(code) {
+  return CIS_AIRPORTS.includes(code.toUpperCase());
+}
 
 // ── Хранилище ────────────────────────────────────────────────
 
@@ -57,7 +70,7 @@ function clearSession(chatId) {
 
 // ── Aviasales API ─────────────────────────────────────────────
 
-async function searchFlights(origin, destination, departDate = null) {
+async function searchAviasales(origin, destination, departDate = null) {
   try {
     const params = {
       origin:      origin.toUpperCase(),
@@ -260,7 +273,46 @@ function removeKeyboard(routes) {
   return { inline_keyboard: rows };
 }
 
-// ── Регистрация ───────────────────────────────────────────────
+// — Поиск через Google Flights (международные)
+async function searchGoogleFlights(origin, destination, date) {
+  try {
+    const response = await axios.post(APIFY_ACTOR_URL, {
+      departureAirport: origin,
+      arrivalAirport: destination,
+      departureDate: date
+    }, {
+      params: { token: APIFY_TOKEN },
+      timeout: 60000
+    });
+
+    const flights = response.data;
+    if (!flights || flights.length === 0) return null;
+
+    return flights.slice(0, 5).map(f => ({
+      price: f.price,
+      currency: f.currency || 'USD',
+      airline: f.airlines,
+      departTime: f.departure_time,
+      arriveTime: f.arrival_time,
+      stops: f.stops,
+      duration: f.duration
+    }));
+  } catch (err) {
+    console.error('[google-flights] error:', err.message);
+    return null;
+  }
+}
+
+// — Универсальный поиск (выбирает источник автоматически)
+async function searchFlights(origin, destination, date) {
+  if (isCisAirport(origin) && isCisAirport(destination)) {
+    // Используем Aviasales для СНГ направлений
+    return await searchAviasales(origin, destination, date);
+  } else {
+    // Используем Google Flights для международных
+    return await searchGoogleFlights(origin, destination, date);
+  }
+}// ── Регистрация ───────────────────────────────────────────────
 
 function registerFlightCommands(bot) {
 
