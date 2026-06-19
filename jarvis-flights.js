@@ -695,4 +695,4 @@ function registerFlightCommands(bot) {
   console.log('[Джарвис] ✈️ Модуль авиабилетов v2 подключён — /fly для меню');
 }
 
-module.exports = { registerFlightCommands };
+module.exports = { registerFlightCommands, clearSession };
