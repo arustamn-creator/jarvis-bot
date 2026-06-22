@@ -1,45 +1,94 @@
 // ============================================================
-//  flights.js — Джарвис: отслеживание цен на авиабилеты
-//  Подключение в index.js:
-//    const { registerFlightCommands } = require('./flights');
-//    registerFlightCommands(bot);
+//  jarvis-flights.js v3 — Надёжный мониторинг авиабилетов
+//  Команды: /fly — главное меню с кнопками
+//           /fly_status — статус мониторинга (когда была последняя проверка)
+//
+//  ИСПРАВЛЕНО в v3:
+//   • Мониторинг через node-cron (надёжнее setInterval, переживает рестарт)
+//   • При старте бота сразу шлётся подтверждение что мониторинг жив
+//   • /fly_status показывает время последней и следующей проверки
+//   • Лог каждой проверки сохраняется в data, видно через /fly_status
 // ============================================================
 
 require('dotenv').config();
-const axios  = require('axios');
-const fs     = require('fs');
-const path   = require('path');
+const axios = require('axios');
+const fs    = require('fs');
+const path  = require('path');
+const cron  = require('node-cron');
 
-// ── Настройки ────────────────────────────────────────────────
 const AVIASALES_TOKEN = process.env.AVIASALES_TOKEN;
+const API_BASE        = 'https://api.travelpayouts.com/v1';
 const DATA_FILE       = path.join(__dirname, 'memory_db', 'flights.json');
 const CURRENCY        = 'rub';
-const API_BASE        = 'https://api.travelpayouts.com/v1';
+const CHAT_ID         = process.env.TELEGRAM_CHAT_ID;
 
-// ── Хранилище подписок (JSON-файл рядом с memory_db) ────────
+// ── Хранилище ────────────────────────────────────────────────
 
 function loadData() {
-  if (!fs.existsSync(DATA_FILE)) {
-    fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-    return { routes: {}, history: {} };
-  }
   try {
-    return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    if (!fs.existsSync(DATA_FILE)) {
+      fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
+      return { routes: {}, history: {}, sessions: {}, monitor: {} };
+    }
+    const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    if (!data.monitor) data.monitor = {};
+    return data;
   } catch {
-    return { routes: {}, history: {} };
+    return { routes: {}, history: {}, sessions: {}, monitor: {} };
   }
 }
 
 function saveData(data) {
+  fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
   fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
 }
 
-// ── Aviasales API ────────────────────────────────────────────
+function getSession(chatId) {
+  const db = loadData();
+  return db.sessions[chatId] || {};
+}
 
-async function fetchCheapest(origin, destination) {
+function setSession(chatId, data) {
+  const db = loadData();
+  db.sessions[chatId] = { ...db.sessions[chatId], ...data };
+  saveData(db);
+}
+
+function clearSession(chatId) {
+  const db = loadData();
+  delete db.sessions[chatId];
+  saveData(db);
+}
+
+// ── Лог мониторинга (для /fly_status) ──────────────────────
+
+function logMonitorRun(result) {
+  const db = loadData();
+  db.monitor.lastRun     = new Date().toISOString();
+  db.monitor.lastResult  = result; // 'ok' | 'no_routes' | 'error'
+  db.monitor.runCount    = (db.monitor.runCount || 0) + 1;
+  saveData(db);
+}
+
+function getMonitorStatus() {
+  const db = loadData();
+  return db.monitor;
+}
+
+// ── Aviasales API ─────────────────────────────────────────────
+
+async function searchFlights(origin, destination, departDate = null) {
   try {
+    const params = {
+      origin:      origin.toUpperCase(),
+      destination: destination.toUpperCase(),
+      currency:    CURRENCY,
+      locale:      'ru',
+    };
+    if (departDate) params.depart_date = departDate;
+
     const { data } = await axios.get(`${API_BASE}/prices/cheap`, {
-      params: { origin, destination, currency: CURRENCY, locale: 'ru' },
+      params,
       headers: { 'X-Access-Token': AVIASALES_TOKEN },
       timeout: 15000,
     });
@@ -47,26 +96,23 @@ async function fetchCheapest(origin, destination) {
     const prices = data?.data?.[destination.toUpperCase()];
     if (!prices || Object.keys(prices).length === 0) return null;
 
-    const best = Object.values(prices).reduce((a, b) =>
-      a.price <= b.price ? a : b
-    );
-
-    return {
-      price:      best.price,
-      airline:    best.airline || '?',
-      departDate: best.depart_date || '—',
-      returnDate: best.return_date || null,
+    const sorted = Object.values(prices).sort((a, b) => a.price - b.price);
+    return sorted.map(t => ({
+      price:      t.price,
+      airline:    t.airline || '?',
+      departDate: t.depart_date || '—',
+      returnDate: t.return_date || null,
+      transfers:  t.transfers || 0,
       link: `https://www.aviasales.ru/search/${origin.toUpperCase()}` +
-            `${(best.depart_date || '').replace(/-/g, '')}` +
-            `${destination.toUpperCase()}1`,
-    };
+            `${(t.depart_date || '').replace(/-/g, '')}${destination.toUpperCase()}1`,
+    }));
   } catch (err) {
     console.error('[flights] API error:', err.message);
     return null;
   }
 }
 
-async function fetchCheapAnywhere(origin, limit = 5) {
+async function searchCheapAnywhere(origin, limit = 8) {
   try {
     const { data } = await axios.get(`${API_BASE}/prices/cheap`, {
       params: { origin, destination: '-', currency: CURRENCY, locale: 'ru' },
@@ -76,19 +122,17 @@ async function fetchCheapAnywhere(origin, limit = 5) {
 
     const results = [];
     for (const [dest, variants] of Object.entries(data?.data || {})) {
-      const best = Object.values(variants).reduce((a, b) =>
-        a.price <= b.price ? a : b
-      );
+      const best = Object.values(variants).sort((a, b) => a.price - b.price)[0];
       results.push({
         dest,
         price:      best.price,
         airline:    best.airline || '?',
         departDate: best.depart_date || '—',
+        transfers:  best.transfers || 0,
         link: `https://www.aviasales.ru/search/${origin.toUpperCase()}` +
               `${(best.depart_date || '').replace(/-/g, '')}${dest}1`,
       });
     }
-
     return results.sort((a, b) => a.price - b.price).slice(0, limit);
   } catch (err) {
     console.error('[flights] API error:', err.message);
@@ -96,34 +140,75 @@ async function fetchCheapAnywhere(origin, limit = 5) {
   }
 }
 
-// ── Логика подписок ──────────────────────────────────────────
+// ── Форматирование ────────────────────────────────────────────
 
-function subscribe(origin, destination, threshold) {
+function fmtPrice(n) {
+  return Number(n).toLocaleString('ru-RU') + ' ₽';
+}
+
+function fmtTransfers(n) {
+  if (n === 0) return 'прямой ✈️';
+  if (n === 1) return '1 пересадка';
+  return `${n} пересадки`;
+}
+
+function fmtDate(d) {
+  if (!d || d === '—') return '—';
+  try {
+    const dt = new Date(d);
+    return dt.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+  } catch { return d; }
+}
+
+function fmtDateTime(iso) {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleString('ru-RU', {
+      timeZone: 'Europe/Moscow',
+      day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit'
+    }) + ' (МСК)';
+  } catch { return iso; }
+}
+
+function fmtResults(tickets, origin, dest, limit = 5) {
+  if (!tickets || tickets.length === 0) {
+    return `😔 По маршруту *${origin}-${dest}* билеты не найдены.\n\nПопробуй другие даты или направление.`;
+  }
+  const top = tickets.slice(0, limit);
+  const lines = [`✈️ *${origin.toUpperCase()} → ${dest.toUpperCase()}*\n`];
+  top.forEach((t, i) => {
+    lines.push(
+      `${i + 1}\\. 💰 *${fmtPrice(t.price)}* — ${fmtDate(t.departDate)}\n` +
+      `   🏢 ${t.airline} · ${fmtTransfers(t.transfers)}\n` +
+      `   [Купить билет](${t.link})`
+    );
+  });
+  lines.push(`\n_Данные: Travelpayouts (обновляются раз в 24–48ч)_`);
+  return lines.join('\n');
+}
+
+// ── Подписки ──────────────────────────────────────────────────
+
+function addSubscription(origin, dest, threshold = null) {
   const db  = loadData();
-  const key = `${origin.toUpperCase()}-${destination.toUpperCase()}`;
-  if (db.routes[key]) return { added: false, key };
+  const key = `${origin.toUpperCase()}-${dest.toUpperCase()}`;
   db.routes[key] = {
     origin:      origin.toUpperCase(),
-    destination: destination.toUpperCase(),
+    destination: dest.toUpperCase(),
     threshold:   threshold || null,
     createdAt:   new Date().toISOString(),
   };
   saveData(db);
-  return { added: true, key };
+  return key;
 }
 
-function unsubscribe(key) {
+function removeSubscription(key) {
   const db = loadData();
-  key = key.toUpperCase();
   if (!db.routes[key]) return false;
   delete db.routes[key];
   delete db.history[key];
   saveData(db);
   return true;
-}
-
-function getRoutes() {
-  return loadData().routes;
 }
 
 function updateHistory(key, price) {
@@ -137,225 +222,474 @@ function updateHistory(key, price) {
   return prev;
 }
 
-// ── Форматирование сообщений ─────────────────────────────────
+// ── Кнопки ───────────────────────────────────────────────────
 
-function fmtPrice(n) {
-  return Number(n).toLocaleString('ru-RU') + ' ₽';
+function mainMenuKeyboard() {
+  return {
+    inline_keyboard: [
+      [
+        { text: '🔍 Найти билеты',        callback_data: 'fly_search' },
+        { text: '🌍 Куда дешевле',        callback_data: 'fly_anywhere' },
+      ],
+      [
+        { text: '⭐ Мои маршруты',        callback_data: 'fly_list' },
+        { text: '📊 Проверить цены',      callback_data: 'fly_check' },
+      ],
+      [
+        { text: '✈️ МОW → MCX',          callback_data: 'fly_mow_mcx' },
+        { text: '📅 Сводка сегодня',      callback_data: 'fly_digest' },
+      ],
+      [
+        { text: '➕ Следить за маршрутом', callback_data: 'fly_subscribe' },
+        { text: '🗑 Удалить маршрут',     callback_data: 'fly_remove' },
+      ],
+      [
+        { text: '🩺 Статус мониторинга', callback_data: 'fly_status' },
+      ],
+    ]
+  };
 }
 
-function msgSubscribed(key, threshold) {
-  return `✅ *Подписка оформлена: ${key}*` +
-    (threshold ? `\nАлерт когда цена ниже ${fmtPrice(threshold)}` : '\nАлерт при новом минимуме');
+function backKeyboard() {
+  return { inline_keyboard: [[{ text: '◀️ Главное меню', callback_data: 'fly_menu' }]] };
 }
 
-function msgAlreadyExists(key) {
-  return `ℹ️ Маршрут *${key}* уже отслеживается.`;
-}
-
-function msgUnsubscribed(key) {
-  return `🗑 Маршрут *${key}* удалён из отслеживания.`;
-}
-
-function msgNotFound(key) {
-  return `⚠️ Маршрут *${key}* не найден в подписках.`;
-}
-
-function msgPriceDrop(key, price, threshold, prevMin) {
-  return `🔥 *Джарвис: цена упала!*\n\n` +
-    `✈️ *${key}*\n` +
-    `💰 *${fmtPrice(price)}* — ниже порога ${fmtPrice(threshold)}` +
-    (prevMin ? ` (ранее мин. ${fmtPrice(prevMin)})` : '') + '\n';
-}
-
-function msgNewMinimum(key, price, prevMin) {
-  return `📉 *Новый минимум!*\n\n` +
-    `✈️ *${key}*\n` +
-    `💰 ${fmtPrice(price)} (было ${fmtPrice(prevMin)}, −${fmtPrice(prevMin - price)})\n`;
-}
-
-function msgDailyDigest(pairs) {
-  const lines = ['📊 *Джарвис: ежедневная сводка цен*\n'];
-  for (const { key, result } of pairs) {
-    if (result) {
-      lines.push(
-        `✈️ *${key}*: ${fmtPrice(result.price)} (${result.departDate}) — ${result.airline}\n` +
-        `   [смотреть билеты](${result.link})`
-      );
-    } else {
-      lines.push(`✈️ *${key}*: данные недоступны`);
-    }
+function dateChoiceKeyboard(origin, dest) {
+  const now = new Date();
+  const months = [];
+  for (let i = 0; i < 4; i++) {
+    const d    = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    const key  = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const name = d.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+    months.push([{ text: `📅 ${name}`, callback_data: `fly_date_${origin}_${dest}_${key}` }]);
   }
-  lines.push(`\n🕐 ${new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}`);
-  return lines.join('\n');
+  months.push([{ text: '🔄 Любая дата (минимум)', callback_data: `fly_date_${origin}_${dest}_any` }]);
+  months.push([{ text: '◀️ Назад', callback_data: 'fly_menu' }]);
+  return { inline_keyboard: months };
 }
 
-function msgSubList(routes, history) {
+function subscribeKeyboard(key) {
+  return {
+    inline_keyboard: [
+      [{ text: '🔔 Следить за ценой', callback_data: `fly_sub_${key}` }],
+      [{ text: '◀️ Главное меню',     callback_data: 'fly_menu' }],
+    ]
+  };
+}
+
+function removeKeyboard(routes) {
   const keys = Object.keys(routes);
-  if (keys.length === 0) return '📭 *Нет активных подписок.*';
-  const lines = ['📋 *Активные подписки Джарвиса*\n'];
-  for (const key of keys) {
-    const r = routes[key];
-    const h = history[key] || {};
-    lines.push(
-      `✈️ *${key}*\n` +
-      `   порог: ${r.threshold ? fmtPrice(r.threshold) : 'без порога'}` +
-      ` | мин: ${h.minPrice ? fmtPrice(h.minPrice) : '—'}` +
-      ` | сейчас: ${h.lastPrice ? fmtPrice(h.lastPrice) : '—'}`
-    );
-  }
-  return lines.join('\n');
+  if (keys.length === 0) return backKeyboard();
+  const rows = keys.map(k => [{ text: `🗑 ${k}`, callback_data: `fly_del_${k}` }]);
+  rows.push([{ text: '◀️ Назад', callback_data: 'fly_menu' }]);
+  return { inline_keyboard: rows };
 }
 
-function msgCheapAnywhere(origin, results) {
-  const lines = [`🌍 *Дешёвые направления из ${origin.toUpperCase()}*\n`];
-  results.forEach((r, i) => {
-    lines.push(
-      `${i + 1}\\. *${r.dest}* — ${fmtPrice(r.price)} (${r.departDate}) · ${r.airline}\n` +
-      `   [смотреть](${r.link})`
-    );
-  });
-  return lines.join('\n');
-}
-
-function msgHelp() {
-  return `✈️ *Джарвис — Авиабилеты*\n\n` +
-    `*/fly\\_sub MOW BKK 25000* — подписка с порогом цены\n` +
-    `*/fly\\_sub MOW AMS* — подписка без порога\n` +
-    `*/fly\\_del MOW\\-BKK* — удалить маршрут\n` +
-    `*/fly\\_list* — активные подписки\n` +
-    `*/fly\\_check* — проверить цены сейчас\n` +
-    `*/fly\\_digest* — сводка по всем маршрутам\n` +
-    `*/fly\\_cheap MOW 7* — топ дешёвых направлений\n\n` +
-    `_Данные: Travelpayouts API (обновляются раз в 24–48ч)_`;
-}
-
-// ── Проверка цен (для планировщика или /fly_check) ───────────
-
-async function checkPrices(bot, notifyChatId) {
-  const db     = loadData();
-  const routes = db.routes;
-  const keys   = Object.keys(routes);
-  if (keys.length === 0) return;
-
-  for (const key of keys) {
-    const r      = routes[key];
-    const result = await fetchCheapest(r.origin, r.destination);
-    if (!result) continue;
-
-    const prevMin = updateHistory(key, result.price);
-
-    if (!notifyChatId) continue;
-
-    // Алерт при пробитии порога
-    if (r.threshold && result.price <= r.threshold) {
-      await bot.sendMessage(notifyChatId,
-        msgPriceDrop(key, result.price, r.threshold, prevMin) +
-        `🗓 Вылет: ${result.departDate}\n🏢 ${result.airline}\n[Смотреть билеты](${result.link})`,
-        { parse_mode: 'Markdown', disable_web_page_preview: true }
-      );
-    }
-    // Алерт при новом историческом минимуме
-    else if (prevMin && result.price < prevMin) {
-      await bot.sendMessage(notifyChatId,
-        msgNewMinimum(key, result.price, prevMin) +
-        `🗓 ${result.departDate} · ${result.airline}\n[Смотреть](${result.link})`,
-        { parse_mode: 'Markdown', disable_web_page_preview: true }
-      );
-    }
-  }
-}
-
-// ── Регистрация команд в боте ────────────────────────────────
+// ── Регистрация ───────────────────────────────────────────────
 
 function registerFlightCommands(bot) {
 
-  const send = (chatId, text) =>
-    bot.sendMessage(chatId, text, {
-      parse_mode: 'Markdown',
-      disable_web_page_preview: true,
-    });
+  const send = (chatId, text, keyboard = null) => {
+    const opts = { parse_mode: 'Markdown', disable_web_page_preview: true };
+    if (keyboard) opts.reply_markup = keyboard;
+    return bot.sendMessage(chatId, text, opts);
+  };
 
-  // /fly_help
-  bot.onText(/\/fly_help/, async (msg) => {
-    await send(msg.chat.id, msgHelp());
+  const edit = (chatId, msgId, text, keyboard = null) => {
+    const opts = { parse_mode: 'Markdown', disable_web_page_preview: true };
+    if (keyboard) opts.reply_markup = keyboard;
+    return bot.editMessageText(text, { chat_id: chatId, message_id: msgId, ...opts });
+  };
+
+  // ── /fly — главное меню
+  bot.onText(/\/fly$/, async (msg) => {
+    await send(msg.chat.id, `✈️ *Джарвис — Авиабилеты*\n\nВыбери действие:`, mainMenuKeyboard());
   });
 
-  // /fly_sub ORIGIN DEST [THRESHOLD]
-  // Пример: /fly_sub MOW BKK 25000
-  bot.onText(/\/fly_sub\s+([A-Za-z]{3})\s+([A-Za-z]{3})(?:\s+(\d+))?/, async (msg, match) => {
-    const chatId    = msg.chat.id;
-    const origin    = match[1].toUpperCase();
-    const dest      = match[2].toUpperCase();
-    const threshold = match[3] ? parseFloat(match[3]) : null;
-
-    await bot.sendChatAction(chatId, 'typing');
-    const { added, key } = subscribe(origin, dest, threshold);
-    await send(chatId, added ? msgSubscribed(key, threshold) : msgAlreadyExists(key));
+  // ── /fly_status — диагностика мониторинга (текстовая команда)
+  bot.onText(/\/fly_status/, async (msg) => {
+    await send(msg.chat.id, statusMessage());
   });
 
-  // /fly_del MOW-BKK
-  bot.onText(/\/fly_del\s+([A-Za-z]{3}[-_][A-Za-z]{3})/, async (msg, match) => {
-    const chatId = msg.chat.id;
-    const key    = match[1].replace('_', '-').toUpperCase();
-    const ok     = unsubscribe(key);
-    await send(chatId, ok ? msgUnsubscribed(key) : msgNotFound(key));
-  });
+  function statusMessage() {
+    const mon = getMonitorStatus();
+    const db  = loadData();
+    const routeCount = Object.keys(db.routes).length;
 
-  // /fly_list
-  bot.onText(/\/fly_list/, async (msg) => {
-    const db = loadData();
-    await send(msg.chat.id, msgSubList(db.routes, db.history));
-  });
-
-  // /fly_check — проверить цены прямо сейчас
-  bot.onText(/\/fly_check/, async (msg) => {
-    const chatId = msg.chat.id;
-    await bot.sendChatAction(chatId, 'typing');
-    const routes = getRoutes();
-    if (Object.keys(routes).length === 0) {
-      return send(chatId, '📭 Нет активных подписок. Добавьте: `/fly_sub MOW BKK 25000`');
+    if (!CHAT_ID) {
+      return `🩺 *Статус мониторинга*\n\n` +
+        `❌ *TELEGRAM_CHAT_ID не задан* — автоматические алерты не отправляются.\n` +
+        `Добавь переменную в Railway и перезапусти бота.`;
     }
-    await send(chatId, '🔍 Проверяю цены...');
-    await checkPrices(bot, chatId);
-    await send(chatId, '✅ Проверка завершена.');
+
+    if (!mon.lastRun) {
+      return `🩺 *Статус мониторинга*\n\n` +
+        `⏳ Мониторинг запущен, но проверок ещё не было.\n` +
+        `Первая проверка произойдёт по расписанию (каждые 6 часов: 00:00, 06:00, 12:00, 18:00 МСК).\n\n` +
+        `Маршрутов в подписке: *${routeCount}*\n` +
+        `Хочешь проверить прямо сейчас — нажми «📊 Проверить цены» в /fly.`;
+    }
+
+    return `🩺 *Статус мониторинга*\n\n` +
+      `✅ Мониторинг активен\n` +
+      `🕐 Последняя проверка: ${fmtDateTime(mon.lastRun)}\n` +
+      `🔢 Всего проверок: ${mon.runCount || 0}\n` +
+      `📋 Маршрутов в подписке: ${routeCount}\n` +
+      `⏰ Следующие проверки: 00:00, 06:00, 12:00, 18:00 (МСК)\n\n` +
+      `_Алерт приходит только если цена ниже предыдущего минимума или ниже заданного порога._`;
+  }
+
+  // ── Обработка кнопок
+  bot.on('callback_query', async (query) => {
+    const chatId = query.message.chat.id;
+    const msgId  = query.message.message_id;
+    const data   = query.data;
+
+    await bot.answerCallbackQuery(query.id);
+
+    if (data === 'fly_menu') {
+      await edit(chatId, msgId, `✈️ *Джарвис — Авиабилеты*\n\nВыбери действие:`, mainMenuKeyboard());
+      return;
+    }
+
+    if (data === 'fly_status') {
+      await edit(chatId, msgId, statusMessage(), backKeyboard());
+      return;
+    }
+
+    if (data === 'fly_search') {
+      setSession(chatId, { step: 'waiting_origin' });
+      await edit(chatId, msgId,
+        `🔍 *Поиск билетов*\n\nНапиши город отправления или IATA-код:\n\n` +
+        `Примеры: *Москва*, *MOW*, *Махачкала*, *MCX*, *Питер*, *LED*`,
+        backKeyboard()
+      );
+      return;
+    }
+
+    if (data === 'fly_anywhere') {
+      setSession(chatId, { step: 'waiting_origin_any' });
+      await edit(chatId, msgId, `🌍 *Куда дешевле всего?*\n\nНапиши город откуда летишь:`, backKeyboard());
+      return;
+    }
+
+    if (data === 'fly_mow_mcx') {
+      await edit(chatId, msgId, `✈️ *Москва → Махачкала*\n\nВыбери месяц вылета:`, dateChoiceKeyboard('MOW', 'MCX'));
+      return;
+    }
+
+    if (data.startsWith('fly_date_')) {
+      const parts  = data.replace('fly_date_', '').split('_');
+      const origin = parts[0];
+      const dest   = parts[1];
+      const date   = parts[2];
+
+      await bot.sendChatAction(chatId, 'typing');
+      const tickets = await searchFlights(origin, dest, date === 'any' ? null : date);
+      const text    = fmtResults(tickets, origin, dest);
+      const key     = `${origin}-${dest}`;
+
+      await edit(chatId, msgId, text, subscribeKeyboard(key));
+      return;
+    }
+
+    if (data === 'fly_subscribe') {
+      setSession(chatId, { step: 'waiting_sub_origin' });
+      await edit(chatId, msgId, `➕ *Следить за маршрутом*\n\nНапиши город отправления:`, backKeyboard());
+      return;
+    }
+
+    if (data.startsWith('fly_sub_')) {
+      const key    = data.replace('fly_sub_', '');
+      const [o, d] = key.split('-');
+      addSubscription(o, d);
+      await edit(chatId, msgId,
+        `🔔 *Подписка оформлена!*\n\n✈️ Маршрут *${key}* добавлен в мониторинг.\n` +
+        `Проверка каждые 6 часов (00:00, 06:00, 12:00, 18:00 МСК).\n` +
+        `Алерт придёт когда цена упадёт ниже текущего минимума.\n\n` +
+        `Статус мониторинга можно посмотреть командой /fly_status`,
+        backKeyboard()
+      );
+      return;
+    }
+
+    if (data === 'fly_check') {
+      const db     = loadData();
+      const routes = Object.values(db.routes);
+      if (routes.length === 0) {
+        await edit(chatId, msgId, `📭 *Нет активных подписок*\n\nДобавь маршрут через кнопку "Следить за маршрутом"`, backKeyboard());
+        return;
+      }
+      await bot.sendChatAction(chatId, 'typing');
+      const lines = ['📊 *Текущие цены по подпискам*\n'];
+      for (const r of routes) {
+        const tickets = await searchFlights(r.origin, r.destination);
+        if (tickets && tickets[0]) {
+          const t    = tickets[0];
+          const key  = `${r.origin}-${r.destination}`;
+          const prev = updateHistory(key, t.price);
+          const diff = prev ? (prev - t.price > 0 ? `📉 −${fmtPrice(prev - t.price)}` : `📈 +${fmtPrice(t.price - prev)}`) : '';
+          lines.push(
+            `✈️ *${key}*: ${fmtPrice(t.price)} ${diff}\n` +
+            `   ${fmtDate(t.departDate)} · ${t.airline} · ${fmtTransfers(t.transfers)}\n` +
+            `   [смотреть](${t.link})`
+          );
+        } else {
+          lines.push(`✈️ *${r.origin}-${r.destination}*: данные недоступны`);
+        }
+      }
+      await edit(chatId, msgId, lines.join('\n'), backKeyboard());
+      return;
+    }
+
+    if (data === 'fly_list') {
+      const db     = loadData();
+      const routes = db.routes;
+      const hist   = db.history;
+      if (Object.keys(routes).length === 0) {
+        await edit(chatId, msgId, `📭 *Нет активных подписок*\n\nНажми "Следить за маршрутом" чтобы добавить.`, backKeyboard());
+        return;
+      }
+      const lines = ['⭐ *Мои маршруты*\n'];
+      for (const [key, r] of Object.entries(routes)) {
+        const h = hist[key] || {};
+        lines.push(
+          `✈️ *${key}*\n` +
+          `   Мин. цена: ${h.minPrice ? fmtPrice(h.minPrice) : '—'}\n` +
+          `   Сейчас: ${h.lastPrice ? fmtPrice(h.lastPrice) : '—'}` +
+          `   ${r.threshold ? `\n   Порог: ${fmtPrice(r.threshold)}` : ''}`
+        );
+      }
+      await edit(chatId, msgId, lines.join('\n'), backKeyboard());
+      return;
+    }
+
+    if (data === 'fly_digest') {
+      const db     = loadData();
+      const routes = Object.values(db.routes);
+      if (routes.length === 0) {
+        await edit(chatId, msgId, `📭 Нет подписок для сводки.`, backKeyboard());
+        return;
+      }
+      await bot.sendChatAction(chatId, 'typing');
+      const lines = [`📅 *Сводка цен — ${new Date().toLocaleDateString('ru-RU')}*\n`];
+      for (const r of routes) {
+        const tickets = await searchFlights(r.origin, r.destination);
+        if (tickets && tickets[0]) {
+          const t = tickets[0];
+          lines.push(`✈️ *${r.origin}→${r.destination}*: ${fmtPrice(t.price)} (${fmtDate(t.departDate)}) [купить](${t.link})`);
+        }
+      }
+      await edit(chatId, msgId, lines.join('\n'), backKeyboard());
+      return;
+    }
+
+    if (data === 'fly_remove') {
+      const db = loadData();
+      await edit(chatId, msgId, `🗑 *Удалить маршрут*\n\nВыбери маршрут:`, removeKeyboard(db.routes));
+      return;
+    }
+
+    if (data.startsWith('fly_del_')) {
+      const key = data.replace('fly_del_', '');
+      removeSubscription(key);
+      await edit(chatId, msgId, `✅ Маршрут *${key}* удалён.`, backKeyboard());
+      return;
+    }
   });
 
-  // /fly_digest — сводка по всем маршрутам
-  bot.onText(/\/fly_digest/, async (msg) => {
-    const chatId = msg.chat.id;
-    await bot.sendChatAction(chatId, 'typing');
-    const routes = getRoutes();
-    if (Object.keys(routes).length === 0) {
-      return send(chatId, '📭 Нет активных подписок.');
+  // ── Текстовый диалог
+  bot.on('message', async (msg) => {
+    if (!msg.text || msg.text.startsWith('/')) return;
+    const chatId  = msg.chat.id;
+    const session = getSession(chatId);
+    if (!session.step) return;
+
+    const text = msg.text.trim();
+
+    const cityMap = {
+      'москва': 'MOW', 'moscow': 'MOW',
+      'махачкала': 'MCX', 'makhachkala': 'MCX',
+      'питер': 'LED', 'санкт-петербург': 'LED', 'спб': 'LED',
+      'новосибирск': 'OVB', 'екатеринбург': 'SVX',
+      'сочи': 'AER', 'краснодар': 'KRR',
+      'казань': 'KZN', 'уфа': 'UFA',
+      'дубай': 'DXB', 'dubai': 'DXB',
+      'стамбул': 'IST', 'istanbul': 'IST',
+      'бангкок': 'BKK', 'bangkok': 'BKK',
+      'париж': 'CDG', 'paris': 'CDG',
+      'берлин': 'BER', 'berlin': 'BER',
+      'тбилиси': 'TBS', 'tbilisi': 'TBS',
+      'ереван': 'EVN', 'yerevan': 'EVN',
+      'анталья': 'AYT', 'antalya': 'AYT',
+    };
+
+    const iata = text.length === 3 && /^[A-Za-z]+$/.test(text)
+      ? text.toUpperCase()
+      : cityMap[text.toLowerCase()] || text.toUpperCase();
+
+    if (session.step === 'waiting_origin') {
+      setSession(chatId, { step: 'waiting_dest', origin: iata });
+      await send(chatId, `📍 Откуда: *${iata}*\n\nТеперь напиши город назначения:`, backKeyboard());
+      return;
     }
-    const pairs = [];
-    for (const [key, r] of Object.entries(routes)) {
-      const result = await fetchCheapest(r.origin, r.destination);
-      if (result) updateHistory(key, result.price);
-      pairs.push({ key, result });
+
+    if (session.step === 'waiting_dest') {
+      const origin = session.origin;
+      const dest   = iata;
+      setSession(chatId, { step: 'waiting_date', origin, dest });
+      await send(chatId,
+        `✈️ *${origin} → ${dest}*\n\nВыбери месяц или укажи дату (формат: *2025-08-15*):`,
+        dateChoiceKeyboard(origin, dest)
+      );
+      return;
     }
-    await send(chatId, msgDailyDigest(pairs));
+
+    if (session.step === 'waiting_date') {
+      const origin = session.origin;
+      const dest   = session.dest;
+      if (/^\d{4}-\d{2}(-\d{2})?$/.test(text)) {
+        clearSession(chatId);
+        await bot.sendChatAction(chatId, 'typing');
+        const tickets = await searchFlights(origin, dest, text);
+        const result  = fmtResults(tickets, origin, dest);
+        const key     = `${origin}-${dest}`;
+        await send(chatId, result, subscribeKeyboard(key));
+      } else {
+        await send(chatId, `⚠️ Неверный формат. Используй: *2025-08* (месяц) или *2025-08-15* (дата)\n\nИли выбери из кнопок выше.`);
+      }
+      return;
+    }
+
+    if (session.step === 'waiting_origin_any') {
+      clearSession(chatId);
+      await bot.sendChatAction(chatId, 'typing');
+      await send(chatId, `🔍 Ищу дешёвые направления из *${iata}*...`);
+      const results = await searchCheapAnywhere(iata, 8);
+      if (results.length === 0) {
+        await send(chatId, `😔 Не удалось найти билеты из *${iata}*. Проверь название города.`, backKeyboard());
+        return;
+      }
+      const lines = [`🌍 *Куда дешевле из ${iata}*\n`];
+      results.forEach((r, i) => {
+        lines.push(
+          `${i+1}\\. ✈️ *${r.dest}* — ${fmtPrice(r.price)}\n` +
+          `   📅 ${fmtDate(r.departDate)} · ${r.airline} · ${fmtTransfers(r.transfers)}\n` +
+          `   [Купить](${r.link})`
+        );
+      });
+      await send(chatId, lines.join('\n'), backKeyboard());
+      return;
+    }
+
+    if (session.step === 'waiting_sub_origin') {
+      setSession(chatId, { step: 'waiting_sub_dest', subOrigin: iata });
+      await send(chatId, `📍 Откуда: *${iata}*\n\nТеперь напиши город назначения:`);
+      return;
+    }
+
+    if (session.step === 'waiting_sub_dest') {
+      const origin = session.subOrigin;
+      const dest   = iata;
+      clearSession(chatId);
+      const key = addSubscription(origin, dest);
+      await send(chatId,
+        `🔔 *Подписка оформлена!*\n\n✈️ *${key}* добавлен в мониторинг.\n` +
+        `Проверка каждые 6 часов. Статус: /fly_status`,
+        backKeyboard()
+      );
+      return;
+    }
   });
 
-  // /fly_cheap ORIGIN [LIMIT]
-  // Пример: /fly_cheap MOW 7
-  bot.onText(/\/fly_cheap\s+([A-Za-z]{3})(?:\s+(\d+))?/, async (msg, match) => {
-    const chatId = msg.chat.id;
-    const origin = match[1].toUpperCase();
-    const limit  = match[2] ? parseInt(match[2]) : 5;
+  // ── Реальная проверка цен (вызывается планировщиком) ─────────
 
-    await bot.sendChatAction(chatId, 'typing');
-    await send(chatId, `🔍 Ищу дешёвые направления из *${origin}*...`);
+  async function monitorPrices() {
+    const db     = loadData();
+    const routes = Object.values(db.routes);
 
-    const results = await fetchCheapAnywhere(origin, limit);
-    if (results.length === 0) {
-      return send(chatId, `😔 Не удалось найти билеты из *${origin}*. Проверь IATA-код.`);
+    if (routes.length === 0) {
+      console.log('[flights] Мониторинг: нет маршрутов для проверки');
+      logMonitorRun('no_routes');
+      return;
     }
-    await send(chatId, msgCheapAnywhere(origin, results));
-  });
 
-  console.log('[Джарвис] ✈️ Модуль авиабилетов подключён');
+    console.log(`[flights] Мониторинг: проверка ${routes.length} маршрутов...`);
+    let hadError = false;
+
+    for (const r of routes) {
+      try {
+        const tickets = await searchFlights(r.origin, r.destination);
+        if (!tickets || !tickets[0]) {
+          console.log(`[flights] Нет данных для ${r.origin}-${r.destination}`);
+          continue;
+        }
+
+        const best = tickets[0];
+        const key  = `${r.origin}-${r.destination}`;
+        const prev = updateHistory(key, best.price);
+
+        console.log(`[flights] ${key}: ${best.price} ₽ (было: ${prev || 'нет данных'})`);
+
+        if (!CHAT_ID) continue;
+
+        if (prev && best.price < prev) {
+          const drop = prev - best.price;
+          await bot.sendMessage(CHAT_ID,
+            `📉 *Цена упала!*\n\n` +
+            `✈️ *${key}*\n` +
+            `💰 ${fmtPrice(best.price)} (было ${fmtPrice(prev)}, −${fmtPrice(drop)})\n` +
+            `📅 ${fmtDate(best.departDate)} · ${best.airline}\n` +
+            `[Купить билет](${best.link})`,
+            { parse_mode: 'Markdown', disable_web_page_preview: true, reply_markup: backKeyboard() }
+          );
+          console.log(`[flights] ✅ Алерт отправлен: ${key} упал на ${drop} ₽`);
+        }
+
+        if (r.threshold && best.price <= r.threshold) {
+          await bot.sendMessage(CHAT_ID,
+            `🔥 *Цена ниже порога!*\n\n` +
+            `✈️ *${key}*\n` +
+            `💰 *${fmtPrice(best.price)}* ≤ порог ${fmtPrice(r.threshold)}\n` +
+            `📅 ${fmtDate(best.departDate)} · ${best.airline}\n` +
+            `[Купить билет](${best.link})`,
+            { parse_mode: 'Markdown', disable_web_page_preview: true, reply_markup: backKeyboard() }
+          );
+          console.log(`[flights] ✅ Алерт по порогу отправлен: ${key}`);
+        }
+      } catch (err) {
+        hadError = true;
+        console.error(`[flights] Ошибка проверки ${r.origin}-${r.destination}:`, err.message);
+      }
+    }
+
+    logMonitorRun(hadError ? 'error' : 'ok');
+    console.log('[flights] Мониторинг: проверка завершена');
+  }
+
+  // ── Планировщик через node-cron — переживает рестарты Railway,
+  //     т.к. расписание абсолютное (по времени суток), а не относительное
+  if (CHAT_ID) {
+    // Каждые 6 часов: 00:00, 06:00, 12:00, 18:00 по МСК
+    cron.schedule('0 0,6,12,18 * * *', () => {
+      monitorPrices();
+    }, { timezone: 'Europe/Moscow' });
+
+    console.log('[Джарвис] ✈️ Мониторинг цен запланирован: 00:00, 06:00, 12:00, 18:00 (МСК)');
+
+    // Подтверждение при старте, чтобы видно было что система жива
+    bot.sendMessage(CHAT_ID,
+      `✅ *Джарвис перезапущен*\n\n` +
+      `Мониторинг авиабилетов активен.\n` +
+      `Проверки: 00:00, 06:00, 12:00, 18:00 (МСК)\n` +
+      `Статус в любой момент: /fly_status`,
+      { parse_mode: 'Markdown' }
+    ).catch(e => console.error('[flights] Не удалось отправить стартовое сообщение:', e.message));
+  } else {
+    console.warn('[Джарвис] ⚠️ TELEGRAM_CHAT_ID не задан — автоматический мониторинг ОТКЛЮЧЁН');
+  }
+
+  console.log('[Джарвис] ✈️ Модуль авиабилетов v3 подключён — /fly для меню, /fly_status для диагностики');
 }
 
-// ── Экспорт ──────────────────────────────────────────────────
-module.exports = { registerFlightCommands, checkPrices, fetchCheapest };
+module.exports = { registerFlightCommands };
