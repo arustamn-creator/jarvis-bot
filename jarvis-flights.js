@@ -14,6 +14,7 @@ require('dotenv').config();
 const axios = require('axios');
 const fs    = require('fs');
 const path  = require('path');
+const cron  = require('node-cron');
 const AVIASALES_TOKEN = process.env.AVIASALES_TOKEN;
 const API_BASE        = 'https://api.travelpayouts.com/v1';
 const DATA_FILE       = path.join(__dirname, 'memory_db', 'flights.json');
@@ -38,11 +39,13 @@ function loadData() {
   try {
     if (!fs.existsSync(DATA_FILE)) {
       fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-      return { routes: {}, history: {}, sessions: {} };
+      return { routes: {}, history: {}, sessions: {}, monitor: {} };
     }
-    return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    if (!data.monitor) data.monitor = {};
+    return data;
   } catch {
-    return { routes: {}, history: {}, sessions: {} };
+    return { routes: {}, history: {}, sessions: {}, monitor: {} };
   }
 }
 
@@ -66,6 +69,21 @@ function clearSession(chatId) {
   const db = loadData();
   delete db.sessions[chatId];
   saveData(db);
+}
+
+// ── Лог мониторинга (для /fly_status) ──────────────────────────
+
+function logMonitorRun(result) {
+  const db = loadData();
+  db.monitor.lastRun    = new Date().toISOString();
+  db.monitor.lastResult = result; // 'ok' | 'no_routes'
+  db.monitor.runCount   = (db.monitor.runCount || 0) + 1;
+  saveData(db);
+}
+
+function getMonitorStatus() {
+  const db = loadData();
+  return db.monitor;
 }
 
 // ── Aviasales API ─────────────────────────────────────────────
@@ -152,6 +170,16 @@ function fmtDate(d) {
     const dt = new Date(d);
     return dt.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
   } catch { return d; }
+}
+
+function fmtDateTime(iso) {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleString('ru-RU', {
+      timeZone: 'Europe/Moscow',
+      day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit'
+    }) + ' (МСК)';
+  } catch { return iso; }
 }
 
 function fmtResults(tickets, origin, dest, limit = 5) {
@@ -329,11 +357,33 @@ function registerFlightCommands(bot) {
   };
 
   // ── /fly — главное меню
-  bot.onText(/\/fly/, async (msg) => {
+  bot.onText(/\/fly$/, async (msg) => {
     await send(msg.chat.id,
       `✈️ *Джарвис — Авиабилеты*\n\nВыбери действие:`,
       mainMenuKeyboard()
     );
+  });
+
+  // ── /fly_status — статус мониторинга
+  function statusMessage() {
+    const mon        = getMonitorStatus();
+    const db         = loadData();
+    const routeCount = Object.keys(db.routes).length;
+    const chatIdSet  = Boolean(process.env.TELEGRAM_CHAT_ID);
+
+    const lines = [`🩺 *Статус мониторинга*\n`];
+    lines.push(chatIdSet ? `✅ CHAT_ID: задан` : `❌ CHAT_ID не задан — алерты не отправляются`);
+    lines.push(mon.lastRun
+      ? `🕐 Последняя проверка: ${fmtDateTime(mon.lastRun)}`
+      : `⏳ Проверок ещё не было`);
+    if (mon.runCount) lines.push(`🔢 Всего проверок: ${mon.runCount}`);
+    lines.push(`📋 Маршрутов в подписке: *${routeCount}*`);
+    lines.push(`⏰ Расписание: 00:00, 06:00, 12:00, 18:00 (МСК)`);
+    return lines.join('\n');
+  }
+
+  bot.onText(/\/fly_status/, async (msg) => {
+    await send(msg.chat.id, statusMessage());
   });
 
   // ── Обработка кнопок
@@ -643,7 +693,10 @@ function registerFlightCommands(bot) {
   async function monitorPrices(notifyChatId) {
     const db     = loadData();
     const routes = Object.values(db.routes);
-    if (routes.length === 0) return;
+    if (routes.length === 0) {
+      logMonitorRun('no_routes');
+      return;
+    }
 
     console.log(`[flights] Мониторинг ${routes.length} маршрутов...`);
 
@@ -684,13 +737,16 @@ function registerFlightCommands(bot) {
         );
       }
     }
+
+    logMonitorRun('ok');
   }
 
-  // Запуск мониторинга каждые 6 часов
+  // Запуск мониторинга через node-cron — переживает рестарты сервера,
+  // т.к. расписание абсолютное (по времени суток), а не относительное
   const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
   if (CHAT_ID) {
-    setInterval(() => monitorPrices(CHAT_ID), 6 * 60 * 60 * 1000);
-    console.log('[Джарвис] ✈️ Мониторинг цен: каждые 6 часов');
+    cron.schedule('0 0,6,12,18 * * *', () => monitorPrices(CHAT_ID), { timezone: 'Europe/Moscow' });
+    console.log('[Джарвис] ✈️ Мониторинг цен запланирован: 00:00, 06:00, 12:00, 18:00 (МСК)');
   }
 
   console.log('[Джарвис] ✈️ Модуль авиабилетов v2 подключён — /fly для меню');
