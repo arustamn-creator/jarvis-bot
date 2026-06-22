@@ -13,6 +13,9 @@ const { saveMessage, getHistory } = require('./memory');
 const bot = new TelegramBot(process.env.TELEGRAM_TOKEN, {
   polling: true
 });
+bot.on('polling_error', (err) => {
+  console.error(`[Джарвис] Ошибка поллинга: ${err.message}`);
+});
 
 registerFlightCommands(bot);
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
