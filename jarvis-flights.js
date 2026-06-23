@@ -344,16 +344,36 @@ async function searchFlights(origin, destination, date) {
 
 function registerFlightCommands(bot) {
 
-  const send = (chatId, text, keyboard = null) => {
+  const stripMarkdown = (text) => text.replace(/[*_`]/g, '');
+
+  const send = async (chatId, text, keyboard = null) => {
     const opts = { parse_mode: 'Markdown', disable_web_page_preview: true };
     if (keyboard) opts.reply_markup = keyboard;
-    return bot.sendMessage(chatId, text, opts);
+    try {
+      return await bot.sendMessage(chatId, text, opts);
+    } catch (err) {
+      if (err.message && err.message.includes("can't parse entities")) {
+        const plainOpts = { disable_web_page_preview: true };
+        if (keyboard) plainOpts.reply_markup = keyboard;
+        return await bot.sendMessage(chatId, stripMarkdown(text), plainOpts);
+      }
+      throw err;
+    }
   };
 
-  const edit = (chatId, msgId, text, keyboard = null) => {
+  const edit = async (chatId, msgId, text, keyboard = null) => {
     const opts = { parse_mode: 'Markdown', disable_web_page_preview: true };
     if (keyboard) opts.reply_markup = keyboard;
-    return bot.editMessageText(text, { chat_id: chatId, message_id: msgId, ...opts });
+    try {
+      return await bot.editMessageText(text, { chat_id: chatId, message_id: msgId, ...opts });
+    } catch (err) {
+      if (err.message && err.message.includes("can't parse entities")) {
+        const plainOpts = { chat_id: chatId, message_id: msgId, disable_web_page_preview: true };
+        if (keyboard) plainOpts.reply_markup = keyboard;
+        return await bot.editMessageText(stripMarkdown(text), plainOpts);
+      }
+      throw err;
+    }
   };
 
   // ── /fly — главное меню
