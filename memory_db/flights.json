@@ -19,11 +19,7 @@
       "step": "waiting_date",
       "origin": "MOW",
       "dest": "MCX"
-    },
-    "5715605642": {
-      "step": "waiting_date",
-      "origin": "MOW",
-      "dest": "MCX"
     }
-  }
+  },
+  "monitor": {}
 }

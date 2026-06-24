@@ -17,13 +17,14 @@ bot.on('polling_error', (err) => {
   console.error(`[Джарвис] Ошибка поллинга: ${err.message}`);
 });
 
+
 registerFlightCommands(bot);
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const SYSTEM_PROMPT =
   'Ты умный ассистент по имени Jarvis. ' +
-  'Отвечай кратко: 2-4 предложения, без длинных самопрезентаций. ' +
+  'Отвечай по существу и так подробно, как требует вопрос — короткий вопрос заслуживает короткий ответ, сложный можно разобрать по пунктам. ' +
   'Будь дружелюбным, по-русски, по делу.';
 
 // === Claude ===
@@ -33,16 +34,23 @@ async function askClaude(chatId, userMessage) {
 
   const history = await getHistory(chatId);
 
-const response = await groq.chat.completions.create({
-  model: 'llama-3.3-70b-versatile',
-  max_tokens: 2048,
-  messages: [
-    { role: 'system', content: SYSTEM_PROMPT },
-    ...history
-  ],
-});
+const response = await fetch("https://apinet.cloud/v1/messages", {
+  method: "POST",
+  headers: {
+    "x-api-key": process.env.ANTHROPIC_API_KEY,
+    "anthropic-version": "2023-06-01",
+    "content-type": "application/json"
+  },
+  body: JSON.stringify({
+    model: "claude-sonnet-4-6",
+    max_tokens: 4096,
+    system: SYSTEM_PROMPT,
+    messages: history
+  })
+}).then(r => r.json());
 
- const reply = response.choices[0].message.content;
+
+const reply = response.content[0].text;
 
   await saveMessage(chatId, 'assistant', reply);
 

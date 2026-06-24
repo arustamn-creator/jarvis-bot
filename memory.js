@@ -21,9 +21,9 @@ async function getHistory(chatId, limit = 20) {
         .from('messages')
         .select('role, content')
         .eq('chat_id', String(chatId))
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: false })
         .limit(limit);
-    return data || [];
+    return (data || []).reverse();
 }
 
 // Очистить историю чата

@@ -663,6 +663,7 @@ function registerFlightCommands(bot) {
           `⚠️ Неверный формат. Используй: *2025-08* (месяц) или *2025-08-15* (дата)\n\nИли выбери из кнопок выше.`
         );
       }
+      clearSession(chatId);
       return;
     }
 
