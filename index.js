@@ -1,7 +1,4 @@
 require('dotenv').config();
-const { clearSession } = require('./jarvis-flights');
-
-const { registerFlightCommands } = require('./jarvis-flights');
 const TelegramBot = require('node-telegram-bot-api');
 const Groq = require('groq-sdk');
 const OpenAI = require('openai');
@@ -17,8 +14,6 @@ bot.on('polling_error', (err) => {
   console.error(`[Джарвис] Ошибка поллинга: ${err.message}`);
 });
 
-
-registerFlightCommands(bot);
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -117,8 +112,7 @@ function cleanupFiles(...files) {
 // === Команды ===
 
 bot.onText(/\/start/, async (msg) => {
-await clearSession(msg.chat.id);
-await bot.sendMessage(
+  await bot.sendMessage(
     msg.chat.id,
     '👋 Привет! Я *Jarvis* — ваш умный ИИ-ассистент.\n\n' +
     '💬 Напишите текстовое сообщение или отправьте голосовое — я отвечу!\n\n' +
