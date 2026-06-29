@@ -82,7 +82,14 @@ async function checkKworkOrders(notifyChatId) {
 
   if (notifyChatId) {
     for (const text of digest.messages) {
-      await bot.sendMessage(notifyChatId, text, { parse_mode: 'Markdown' });
+      try {
+        await bot.sendMessage(notifyChatId, text);
+      } catch (err) {
+        // Не даём одному проблемному сообщению заблокировать markSeen/saveState
+        // для всей пачки — иначе письма так и останутся непрочитанными и будут
+        // бесконечно пересчитываться при каждой проверке.
+        console.error('[kwork] Не удалось отправить сообщение о заказе:', err.message);
+      }
     }
   }
 

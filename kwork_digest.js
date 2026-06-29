@@ -2,8 +2,11 @@ const { fetchUnseenKworkEmails: defaultFetchUnseenKworkEmails } = require('./kwo
 const { parseKworkEmail: defaultParseKworkEmail } = require('./kwork_parser');
 const { rankKworkOrders: defaultRankKworkOrders } = require('./kwork_rank');
 
+// Без parse_mode: title/reason — произвольный текст (с биржи и от Claude),
+// который может содержать символы Markdown (_ * ` [) и ломать парсинг entities
+// в Telegram. Plain text исключает этот класс ошибок целиком.
 function formatKworkMessage(order) {
-  const lines = ['🎯 *Новый заказ на Kwork*', `*${order.title}*`];
+  const lines = ['🎯 Новый заказ на Kwork', order.title];
   if (order.budget) lines.push(`💰 ${order.budget}`);
   if (order.reason) lines.push(`✅ ${order.reason}`);
   if (order.link) lines.push(order.link);
