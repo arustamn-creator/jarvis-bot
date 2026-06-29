@@ -2,58 +2,56 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { parseKworkEmail } = require('../kwork_parser');
 
-test('парсит HTML-письмо с заказом', () => {
-  const email = {
-    subject: 'Новый заказ: Лендинг для строительной компании',
-    text: '',
-    html: `
-      <div>
-        <p>На бирже новый заказ по вашей категории.</p>
-        <p>Бюджет: 15 000 ₽</p>
-        <p>Нужен лендинг для строительной компании с формой заявки.</p>
-        <a href="https://kwork.ru/projects/987654/lending-dlya-stroitelnoy-kompanii">Откликнуться</a>
-      </div>
-    `,
-  };
+// Упрощённая, но структурно верная копия реального дайджест-письма Kwork:
+// таблица из нескольких строк-проектов внутри одного письма.
+const DIGEST_HTML = `
+  <table>
+    <tr>
+      <td>
+        <a href="https://kwork.ru/new_offer?project=1111111" style="display: block;">Лендинг для строительной компании</a>
+        <div style="font-size: 12px;">Разработка и IT > Создание сайта > > Новый сайт</div>
+      </td>
+      <td><a href="https://kwork.ru/user/someone">Покупатель</a></td>
+      <td style="text-align: center;">
+        15 000 Р
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <a href="https://kwork.ru/new_offer?project=2222222" style="display: block;">Логотип для кофейни</a>
+        <div style="font-size: 12px;">Дизайн > Логотипы > > Разработка логотипа</div>
+      </td>
+      <td><a href="https://kwork.ru/user/another">Покупатель</a></td>
+      <td style="text-align: center;">
+        2 000 Р
+      </td>
+    </tr>
+  </table>
+`;
 
-  const result = parseKworkEmail(email);
+test('извлекает все проекты из письма-дайджеста', () => {
+  const orders = parseKworkEmail({ subject: 'Новые проекты на бирже Kwork', text: '', html: DIGEST_HTML });
 
-  assert.equal(result.title, 'Лендинг для строительной компании');
-  assert.equal(result.budget, '15 000 ₽');
-  assert.equal(result.link, 'https://kwork.ru/projects/987654/lending-dlya-stroitelnoy-kompanii');
-  assert.match(result.description, /лендинг для строительной компании/i);
+  assert.equal(orders.length, 2);
+
+  assert.equal(orders[0].title, 'Лендинг для строительной компании');
+  assert.equal(orders[0].category, 'Разработка и IT > Создание сайта > > Новый сайт');
+  assert.equal(orders[0].budget, '15 000 ₽');
+  assert.equal(orders[0].link, 'https://kwork.ru/new_offer?project=1111111');
+
+  assert.equal(orders[1].title, 'Логотип для кофейни');
+  assert.equal(orders[1].budget, '2 000 ₽');
+  assert.equal(orders[1].link, 'https://kwork.ru/new_offer?project=2222222');
 });
 
-test('парсит plain-text письмо без HTML', () => {
-  const email = {
-    subject: 'Новый проект: Доработка сайта на Tilda',
-    text: [
-      'Категория: Сайты и лендинги',
-      'Бюджет: от 5000 до 8000 ₽',
-      'Нужно доработать существующий сайт на Tilda, добавить интеграцию с Яндекс.Метрикой.',
-      'Ссылка: https://kwork.ru/projects/123456/dorabotka-sayta-na-tilda',
-    ].join('\n'),
-    html: null,
-  };
+test('возвращает [], если в письме нет HTML', () => {
+  const orders = parseKworkEmail({ subject: 'Сервисное письмо Kwork', text: 'У вас новое сообщение.', html: null });
 
-  const result = parseKworkEmail(email);
-
-  assert.equal(result.title, 'Доработка сайта на Tilda');
-  assert.equal(result.category, 'Сайты и лендинги');
-  assert.match(result.budget, /5000/);
-  assert.equal(result.link, 'https://kwork.ru/projects/123456/dorabotka-sayta-na-tilda');
+  assert.deepEqual(orders, []);
 });
 
-test('не падает, если в письме нет ссылки или бюджета', () => {
-  const email = {
-    subject: 'Сервисное письмо Kwork',
-    text: 'У вас новое сообщение в личном кабинете.',
-    html: null,
-  };
+test('возвращает [], если в письме нет ни одной строки с проектом', () => {
+  const orders = parseKworkEmail({ subject: 'Kwork', text: '', html: '<p>Нет новых заказов по вашим рубрикам.</p>' });
 
-  const result = parseKworkEmail(email);
-
-  assert.equal(result.link, null);
-  assert.equal(result.budget, null);
-  assert.equal(typeof result.description, 'string');
+  assert.deepEqual(orders, []);
 });

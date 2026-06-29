@@ -6,8 +6,13 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
+const cron = require('node-cron');
 const { saveMessage, getHistory } = require('./memory');
 const { callClaude } = require('./claude_client');
+const { fetchUnseenKworkEmails, markSeen } = require('./kwork_mail');
+const { parseKworkEmail } = require('./kwork_parser');
+const { rankKworkOrders } = require('./kwork_rank');
+const { loadState, saveState } = require('./kwork_state');
 const bot = new TelegramBot(process.env.TELEGRAM_TOKEN, {
   polling: true
 });
@@ -35,6 +40,74 @@ async function askClaude(chatId, userMessage) {
 
   return reply;
 }
+
+// === Мониторинг заказов Kwork ===
+
+const KWORK_PROFILE =
+  'Создаю современные лендинги и сайты под ключ. Специализируюсь на продающих ' +
+  'страницах для B2B и малого бизнеса. Работаю с актуальными технологиями — ' +
+  'адаптивная вёрстка, быстрая загрузка, интеграция с Яндекс.Метрикой и Telegram.';
+
+const MAX_PROCESSED_IDS = 500;
+
+function formatKworkMessage(order) {
+  const lines = [
+    `🎯 *Новый заказ на Kwork*`,
+    `*${order.title}*`,
+  ];
+  if (order.budget) lines.push(`💰 ${order.budget}`);
+  if (order.reason) lines.push(`✅ ${order.reason}`);
+  if (order.link) lines.push(order.link);
+  return lines.join('\n');
+}
+
+async function checkKworkOrders(notifyChatId) {
+  const state = loadState();
+  const emails = await fetchUnseenKworkEmails();
+  const newEmails = emails.filter((e) => !state.processedMessageIds.includes(e.messageId));
+
+  const orders = newEmails.flatMap(parseKworkEmail);
+  const matches = orders.length ? await rankKworkOrders(orders, KWORK_PROFILE) : [];
+
+  if (notifyChatId) {
+    for (const match of matches) {
+      await bot.sendMessage(notifyChatId, formatKworkMessage(match), { parse_mode: 'Markdown' });
+    }
+  }
+
+  for (const email of newEmails) {
+    await markSeen(email.uid);
+  }
+
+  state.lastRun = new Date().toISOString();
+  state.processedMessageIds = [...state.processedMessageIds, ...newEmails.map((e) => e.messageId)].slice(-MAX_PROCESSED_IDS);
+  saveState(state);
+
+  return { checked: newEmails.length, matched: matches.length };
+}
+
+if (process.env.TELEGRAM_CHAT_ID) {
+  cron.schedule(
+    '0 * * * *',
+    () => checkKworkOrders(process.env.TELEGRAM_CHAT_ID).catch((err) => console.error('[kwork] Ошибка мониторинга:', err)),
+    { timezone: 'Europe/Moscow' }
+  );
+  console.log('[Джарвис] 🔍 Мониторинг заказов Kwork запланирован: каждый час');
+}
+
+bot.onText(/\/kwork_check/, async (msg) => {
+  const chatId = msg.chat.id;
+  try {
+    await bot.sendMessage(chatId, '🔍 Проверяю почту на новые заказы...');
+    const { checked, matched } = await checkKworkOrders(chatId);
+    if (matched === 0) {
+      await bot.sendMessage(chatId, `Проверено писем: ${checked}. Подходящих заказов нет.`);
+    }
+  } catch (err) {
+    console.error('[kwork_check]', err);
+    await bot.sendMessage(chatId, `❌ Ошибка проверки: ${err.message}`);
+  }
+});
 
 // === Работа с файлами ===
 
