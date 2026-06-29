@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
 const { saveMessage, getHistory } = require('./memory');
+const { callClaude } = require('./claude_client');
 const bot = new TelegramBot(process.env.TELEGRAM_TOKEN, {
   polling: true
 });
@@ -28,24 +29,7 @@ async function askClaude(chatId, userMessage) {
   await saveMessage(chatId, 'user', userMessage);
 
   const history = await getHistory(chatId);
-
-const response = await fetch("https://apinet.cloud/v1/messages", {
-  method: "POST",
-  headers: {
-    "x-api-key": process.env.ANTHROPIC_API_KEY,
-    "anthropic-version": "2023-06-01",
-    "content-type": "application/json"
-  },
-  body: JSON.stringify({
-    model: "claude-sonnet-4-6",
-    max_tokens: 4096,
-    system: SYSTEM_PROMPT,
-    messages: history
-  })
-}).then(r => r.json());
-
-
-const reply = response.content[0].text;
+  const reply = await callClaude({ system: SYSTEM_PROMPT, messages: history });
 
   await saveMessage(chatId, 'assistant', reply);
 
