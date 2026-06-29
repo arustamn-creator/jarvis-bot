@@ -1,4 +1,15 @@
 require('dotenv').config();
+
+process.on('uncaughtException', (err) => {
+  console.error('[Джарвис] Критическая ошибка (uncaughtException):', err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[Джарвис] Критическая ошибка (unhandledRejection):', reason);
+  process.exit(1);
+});
+
 const TelegramBot = require('node-telegram-bot-api');
 const Groq = require('groq-sdk');
 const OpenAI = require('openai');
@@ -15,8 +26,24 @@ const { buildKworkDigest } = require('./kwork_digest');
 const bot = new TelegramBot(process.env.TELEGRAM_TOKEN, {
   polling: true
 });
+// node-telegram-bot-api сам перехватывает ошибки поллинга (например, шторм
+// 409 Conflict от второго инстанса) и не бросает их дальше как необработанное
+// исключение — процесс остаётся жив, но бесполезен. Считаем ошибки подряд и
+// сами завершаем процесс, чтобы Railway увидел крах и перезапустил контейнер.
+const MAX_CONSECUTIVE_POLLING_ERRORS = 10;
+let consecutivePollingErrors = 0;
+
 bot.on('polling_error', (err) => {
-  console.error(`[Джарвис] Ошибка поллинга: ${err.message}`);
+  consecutivePollingErrors += 1;
+  console.error(`[Джарвис] Ошибка поллинга (${consecutivePollingErrors}/${MAX_CONSECUTIVE_POLLING_ERRORS}): ${err.message}`);
+  if (consecutivePollingErrors >= MAX_CONSECUTIVE_POLLING_ERRORS) {
+    console.error('[Джарвис] Слишком много ошибок поллинга подряд — выхожу, чтобы Railway перезапустил контейнер.');
+    process.exit(1);
+  }
+});
+
+bot.on('message', () => {
+  consecutivePollingErrors = 0;
 });
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
