@@ -9,10 +9,9 @@ const { exec } = require('child_process');
 const cron = require('node-cron');
 const { saveMessage, getHistory } = require('./memory');
 const { callClaude } = require('./claude_client');
-const { fetchUnseenKworkEmails, markSeen } = require('./kwork_mail');
-const { parseKworkEmail } = require('./kwork_parser');
-const { rankKworkOrders } = require('./kwork_rank');
+const { markSeen } = require('./kwork_mail');
 const { loadState, saveState } = require('./kwork_state');
+const { buildKworkDigest } = require('./kwork_digest');
 const bot = new TelegramBot(process.env.TELEGRAM_TOKEN, {
   polling: true
 });
@@ -50,40 +49,25 @@ const KWORK_PROFILE =
 
 const MAX_PROCESSED_IDS = 500;
 
-function formatKworkMessage(order) {
-  const lines = [
-    `🎯 *Новый заказ на Kwork*`,
-    `*${order.title}*`,
-  ];
-  if (order.budget) lines.push(`💰 ${order.budget}`);
-  if (order.reason) lines.push(`✅ ${order.reason}`);
-  if (order.link) lines.push(order.link);
-  return lines.join('\n');
-}
-
 async function checkKworkOrders(notifyChatId) {
   const state = loadState();
-  const emails = await fetchUnseenKworkEmails();
-  const newEmails = emails.filter((e) => !state.processedMessageIds.includes(e.messageId));
-
-  const orders = newEmails.flatMap(parseKworkEmail);
-  const matches = orders.length ? await rankKworkOrders(orders, KWORK_PROFILE) : [];
+  const digest = await buildKworkDigest(KWORK_PROFILE, state.processedMessageIds);
 
   if (notifyChatId) {
-    for (const match of matches) {
-      await bot.sendMessage(notifyChatId, formatKworkMessage(match), { parse_mode: 'Markdown' });
+    for (const text of digest.messages) {
+      await bot.sendMessage(notifyChatId, text, { parse_mode: 'Markdown' });
     }
   }
 
-  for (const email of newEmails) {
+  for (const email of digest.newEmails) {
     await markSeen(email.uid);
   }
 
   state.lastRun = new Date().toISOString();
-  state.processedMessageIds = [...state.processedMessageIds, ...newEmails.map((e) => e.messageId)].slice(-MAX_PROCESSED_IDS);
+  state.processedMessageIds = [...state.processedMessageIds, ...digest.newEmails.map((e) => e.messageId)].slice(-MAX_PROCESSED_IDS);
   saveState(state);
 
-  return { checked: newEmails.length, matched: matches.length };
+  return { checked: digest.checked, matched: digest.matched };
 }
 
 if (process.env.TELEGRAM_CHAT_ID) {
