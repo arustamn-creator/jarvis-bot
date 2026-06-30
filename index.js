@@ -17,7 +17,7 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
-const cron = require('node-cron');
+const { ImapFlow } = require('imapflow');
 const { saveMessage, getHistory } = require('./memory');
 const { callClaude } = require('./claude_client');
 const { markSeen } = require('./kwork_mail');
@@ -26,24 +26,14 @@ const { buildKworkDigest } = require('./kwork_digest');
 const bot = new TelegramBot(process.env.TELEGRAM_TOKEN, {
   polling: true
 });
-// node-telegram-bot-api сам перехватывает ошибки поллинга (например, шторм
-// 409 Conflict от второго инстанса) и не бросает их дальше как необработанное
-// исключение — процесс остаётся жив, но бесполезен. Считаем ошибки подряд и
-// сами завершаем процесс, чтобы Railway увидел крах и перезапустил контейнер.
-const MAX_CONSECUTIVE_POLLING_ERRORS = 10;
-let consecutivePollingErrors = 0;
-
 bot.on('polling_error', (err) => {
-  consecutivePollingErrors += 1;
-  console.error(`[Джарвис] Ошибка поллинга (${consecutivePollingErrors}/${MAX_CONSECUTIVE_POLLING_ERRORS}): ${err.message}`);
-  if (consecutivePollingErrors >= MAX_CONSECUTIVE_POLLING_ERRORS) {
-    console.error('[Джарвис] Слишком много ошибок поллинга подряд — выхожу, чтобы Railway перезапустил контейнер.');
-    process.exit(1);
-  }
+  console.error('[Джарвис] Ошибка поллинга:', err.message);
 });
 
-bot.on('message', () => {
-  consecutivePollingErrors = 0;
+process.on('SIGTERM', async () => {
+  console.log('[Джарвис] SIGTERM — останавливаю поллинг...');
+  await bot.stopPolling();
+  process.exit(0);
 });
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
@@ -104,13 +94,43 @@ async function checkKworkOrders(notifyChatId) {
   return { checked: digest.checked, matched: digest.matched };
 }
 
-if (process.env.TELEGRAM_CHAT_ID) {
-  cron.schedule(
-    '0 * * * *',
-    () => checkKworkOrders(process.env.TELEGRAM_CHAT_ID).catch((err) => console.error('[kwork] Ошибка мониторинга:', err)),
-    { timezone: 'Europe/Moscow' }
-  );
-  console.log('[Джарвис] 🔍 Мониторинг заказов Kwork запланирован: каждый час');
+async function startKworkImapIdle(notifyChatId) {
+  while (true) {
+    const client = new ImapFlow({
+      host: 'imap.gmail.com',
+      port: 993,
+      secure: true,
+      auth: {
+        user: process.env.GMAIL_USER,
+        pass: process.env.GMAIL_APP_PASSWORD,
+      },
+      logger: false,
+    });
+    try {
+      await client.connect();
+      const lock = await client.getMailboxLock('INBOX');
+      try {
+        console.log('[kwork IDLE] Подключён, начальная проверка почты...');
+        await checkKworkOrders(notifyChatId);
+        while (true) {
+          await client.idle();
+          await checkKworkOrders(notifyChatId);
+        }
+      } finally {
+        lock.release();
+      }
+    } catch (err) {
+      console.error('[kwork IDLE] Ошибка, переподключение через 30 сек:', err.message);
+    } finally {
+      try { await client.logout(); } catch (_) {}
+    }
+    await new Promise((r) => setTimeout(r, 30000));
+  }
+}
+
+if (process.env.TELEGRAM_CHAT_ID && process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
+  startKworkImapIdle(process.env.TELEGRAM_CHAT_ID);
+  console.log('[Джарвис] 🔍 Мониторинг заказов Kwork запущен через IMAP IDLE');
 }
 
 bot.onText(/\/kwork_check/, async (msg) => {
