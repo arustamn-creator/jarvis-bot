@@ -2,14 +2,22 @@ const { fetchUnseenKworkEmails: defaultFetchUnseenKworkEmails } = require('./kwo
 const { parseKworkEmail: defaultParseKworkEmail } = require('./kwork_parser');
 const { rankKworkOrders: defaultRankKworkOrders } = require('./kwork_rank');
 
-// Без parse_mode: title/reason — произвольный текст (с биржи и от Claude),
-// который может содержать символы Markdown (_ * ` [) и ломать парсинг entities
-// в Telegram. Plain text исключает этот класс ошибок целиком.
+const MD_SPECIAL = /[_*[\]()~`>#+\-=|{}.!\\]/g;
+
+function escapeMd(text) {
+  return String(text).replace(MD_SPECIAL, '\\$&');
+}
+
+// Inside MarkdownV2 link parentheses only ) and \ need escaping.
+function escapeUrl(url) {
+  return String(url).replace(/[)\\]/g, '\\$&');
+}
+
 function formatKworkMessage(order) {
-  const lines = ['🎯 Новый заказ на Kwork', order.title];
-  if (order.budget) lines.push(`💰 ${order.budget}`);
-  if (order.reason) lines.push(`✅ ${order.reason}`);
-  if (order.link) lines.push(order.link);
+  const lines = [`🎯 *Новый заказ на Kwork*`, escapeMd(order.title)];
+  if (order.budget) lines.push(`💰 ${escapeMd(order.budget)}`);
+  if (order.reason) lines.push(`✅ ${escapeMd(order.reason)}`);
+  if (order.link) lines.push(`[Открыть заказ](${escapeUrl(order.link)})`);
   return lines.join('\n');
 }
 

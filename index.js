@@ -83,7 +83,7 @@ async function checkKworkOrders(notifyChatId) {
   if (notifyChatId) {
     for (const text of digest.messages) {
       try {
-        await bot.sendMessage(notifyChatId, text);
+        await bot.sendMessage(notifyChatId, text, { parse_mode: 'MarkdownV2' });
       } catch (err) {
         // Не даём одному проблемному сообщению заблокировать markSeen/saveState
         // для всей пачки — иначе письма так и останутся непрочитанными и будут
