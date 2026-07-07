@@ -300,6 +300,54 @@ bot.on('voice', async (msg) => {
   }
 });
 
+// === HTTP API (вход для voice-core) ===
+
+const express = require('express');
+const crypto = require('crypto');
+
+// Сравнение токенов постоянного времени; длины сперва сравниваем отдельно,
+// иначе timingSafeEqual бросит исключение на буферах разной длины.
+function tokenMatches(provided) {
+  const expected = process.env.VOICE_API_TOKEN;
+  if (!expected || !provided) return false;
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+const api = express();
+api.use(express.json());
+
+api.post('/api/ask', async (req, res) => {
+  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  if (!tokenMatches(token)) {
+    return res.status(401).json({ error: 'unauthorized' });
+  }
+
+  const text = typeof req.body?.text === 'string' ? req.body.text.trim() : '';
+  if (!text) {
+    return res.status(400).json({ error: 'text required' });
+  }
+
+  const chatId = Number(process.env.TELEGRAM_CHAT_ID);
+  if (!chatId) {
+    return res.status(500).json({ error: 'TELEGRAM_CHAT_ID not configured' });
+  }
+
+  try {
+    const reply = await askClaude(chatId, text);
+    res.json({ reply });
+  } catch (err) {
+    console.error('[api/ask]', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+const PORT = process.env.PORT || 3000;
+api.listen(PORT, () => {
+  console.log(`[Джарвис] HTTP API слушает порт ${PORT}`);
+});
+
 // === Запуск ===
 
 console.log('✅ Jarvis Bot запущен и ожидает сообщения...');
