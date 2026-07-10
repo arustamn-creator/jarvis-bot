@@ -1,5 +1,7 @@
 const { ImapFlow } = require('imapflow');
 const { simpleParser } = require('mailparser');
+const { withRetry } = require('./retry');
+const { apiLimiter } = require('./rate_limits');
 
 const KWORK_SENDER_DOMAINS = ['kwork.ru', 'kwork.com'];
 
@@ -24,8 +26,12 @@ function createClient() {
 }
 
 async function fetchUnseenKworkEmails() {
+  if (!apiLimiter.allow('kwork')) {
+    throw new Error('Kwork IMAP: превышен лимит запросов, пропускаю проверку почты');
+  }
+
   const client = createClient();
-  await client.connect();
+  await withRetry(() => client.connect(), { label: 'Kwork IMAP connect' });
 
   const emails = [];
   try {
@@ -53,8 +59,12 @@ async function fetchUnseenKworkEmails() {
 }
 
 async function markSeen(uid) {
+  if (!apiLimiter.allow('kwork')) {
+    throw new Error('Kwork IMAP: превышен лимит запросов, пропускаю markSeen');
+  }
+
   const client = createClient();
-  await client.connect();
+  await withRetry(() => client.connect(), { label: 'Kwork IMAP connect' });
   try {
     const lock = await client.getMailboxLock('INBOX');
     try {

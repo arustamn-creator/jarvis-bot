@@ -19,7 +19,8 @@ const path = require('path');
 const { exec } = require('child_process');
 const { ImapFlow } = require('imapflow');
 const { saveMessage, getHistory } = require('./memory');
-const { callClaude } = require('./claude_client');
+const { callClaude, llmEvents } = require('./claude_client');
+const { telegramLimiter } = require('./rate_limits');
 const { markSeen } = require('./kwork_mail');
 const { loadState, saveState } = require('./kwork_state');
 const { buildKworkDigest } = require('./kwork_digest');
@@ -38,6 +39,21 @@ process.on('SIGTERM', async () => {
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// Уведомления о деградации LLM — не молча падать, слать в Telegram.
+llmEvents.on('fallback', ({ reason }) => {
+  bot.sendMessage(
+    process.env.TELEGRAM_CHAT_ID,
+    `⚠️ Anthropic недоступен (${reason}), временно переключился на Groq`
+  ).catch((err) => console.error('[llm] Не удалось отправить уведомление о fallback:', err.message));
+});
+
+llmEvents.on('exhausted', ({ anthropicError, groqError }) => {
+  bot.sendMessage(
+    process.env.TELEGRAM_CHAT_ID,
+    `❌ LLM полностью недоступен.\nAnthropic: ${anthropicError}\nGroq: ${groqError}`
+  ).catch((err) => console.error('[llm] Не удалось отправить уведомление об отказе:', err.message));
+});
 
 const SYSTEM_PROMPT =
   'Ты умный ассистент по имени Jarvis. ' +
@@ -250,6 +266,7 @@ bot.on('message', async (msg) => {
   if (!msg.text || msg.text.startsWith('/')) return;
 
   const chatId = msg.chat.id;
+  if (!telegramLimiter.allow(chatId)) return;
 
   try {
     await bot.sendChatAction(chatId, 'typing');
@@ -265,6 +282,8 @@ bot.on('message', async (msg) => {
 
 bot.on('voice', async (msg) => {
   const chatId = msg.chat.id;
+  if (!telegramLimiter.allow(chatId)) return;
+
   let oggPath, mp3Path;
 
   try {
