@@ -71,9 +71,13 @@ async function checkKworkOrders(notifyChatId) {
   const digest = await buildKworkDigest(KWORK_PROFILE, state.processedMessageIds);
 
   if (notifyChatId) {
-    for (const text of digest.messages) {
+    for (const message of digest.messages) {
       try {
-        await bot.sendMessage(notifyChatId, text, { parse_mode: 'MarkdownV2' });
+        await bot.sendMessage(notifyChatId, message.text, {
+          parse_mode: 'MarkdownV2',
+          // Тихое сообщение, пока не подтверждены все 4 критерия фильтра
+          disable_notification: message.silent,
+        });
       } catch (err) {
         // Не даём одному проблемному сообщению заблокировать markSeen/saveState
         // для всей пачки — иначе письма так и останутся непрочитанными и будут
