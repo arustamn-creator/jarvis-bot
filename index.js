@@ -86,6 +86,13 @@ async function checkKworkOrders(notifyChatId) {
   const state = loadState();
   const digest = await buildKworkDigest(KWORK_PROFILE, state.processedMessageIds);
 
+  for (const email of digest.newEmails) {
+    if (email.date) {
+      const lagSec = Math.round((Date.now() - new Date(email.date).getTime()) / 1000);
+      console.log(`[kwork] Письмо от ${email.date.toISOString()}, обнаружено через ${lagSec}с`);
+    }
+  }
+
   if (notifyChatId) {
     for (const message of digest.messages) {
       try {
@@ -126,6 +133,8 @@ async function startKworkImapIdle(notifyChatId) {
       },
       logger: false,
     });
+    let hasNewMail = false;
+    client.on('exists', () => { hasNewMail = true; });
     try {
       await client.connect();
       const lock = await client.getMailboxLock('INBOX');
@@ -134,6 +143,12 @@ async function startKworkImapIdle(notifyChatId) {
         await checkKworkOrders(notifyChatId);
         while (true) {
           await client.idle();
+          // Gmail шлёт по IDLE не только реальные новые письма, но и keepalive/
+          // flag-обновления — client.idle() резолвится и на них. Без фильтра
+          // по 'exists' это гоняло полный checkKworkOrders() каждые ~2 сек,
+          // выжигало лимит IMAP-запросов и раз в 10-20 мин рвало соединение.
+          if (!hasNewMail) continue;
+          hasNewMail = false;
           await checkKworkOrders(notifyChatId);
         }
       } finally {
