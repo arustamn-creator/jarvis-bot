@@ -23,6 +23,7 @@ const { telegramLimiter } = require('./rate_limits');
 const { markSeen } = require('./kwork_mail');
 const { loadState, saveState } = require('./kwork_state');
 const { buildKworkDigest } = require('./kwork_digest');
+const agentRegistry = require('./agent_registry');
 // node-telegram-bot-api's internal HTTP client (request, forever-agent) has no
 // timeout by default — a half-open socket (e.g. mid setWebHook-clear-on-409
 // retry) hangs the request forever, so the polling loop's own reschedule
@@ -68,14 +69,21 @@ const SYSTEM_PROMPT =
 // === Claude ===
 
 async function askClaude(chatId, userMessage) {
-  await saveMessage(chatId, 'user', userMessage);
+  agentRegistry.recordStart('chat-handler', `askClaude chatId=${chatId}`);
+  try {
+    await saveMessage(chatId, 'user', userMessage);
 
-  const history = await getHistory(chatId);
-  const reply = await callClaude({ system: SYSTEM_PROMPT, messages: history });
+    const history = await getHistory(chatId);
+    const reply = await callClaude({ system: SYSTEM_PROMPT, messages: history });
 
-  await saveMessage(chatId, 'assistant', reply);
+    await saveMessage(chatId, 'assistant', reply);
 
-  return reply;
+    agentRegistry.recordSuccess('chat-handler', `askClaude chatId=${chatId}: ok`);
+    return reply;
+  } catch (err) {
+    agentRegistry.recordError('chat-handler', err);
+    throw err;
+  }
 }
 
 // === Мониторинг заказов Kwork ===
@@ -88,42 +96,49 @@ const KWORK_PROFILE =
 const MAX_PROCESSED_IDS = 500;
 
 async function checkKworkOrders(notifyChatId) {
-  const state = loadState();
-  const digest = await buildKworkDigest(KWORK_PROFILE, state.processedMessageIds);
+  agentRegistry.recordStart('kwork-monitor', 'Проверка почты на новые заказы Kwork');
+  try {
+    const state = loadState();
+    const digest = await buildKworkDigest(KWORK_PROFILE, state.processedMessageIds);
 
-  for (const email of digest.newEmails) {
-    if (email.date) {
-      const lagSec = Math.round((Date.now() - new Date(email.date).getTime()) / 1000);
-      console.log(`[kwork] Письмо от ${email.date.toISOString()}, обнаружено через ${lagSec}с`);
-    }
-  }
-
-  if (notifyChatId) {
-    for (const message of digest.messages) {
-      try {
-        await bot.sendMessage(notifyChatId, message.text, {
-          parse_mode: 'MarkdownV2',
-          // Тихое сообщение, пока не подтверждены все 4 критерия фильтра
-          disable_notification: message.silent,
-        });
-      } catch (err) {
-        // Не даём одному проблемному сообщению заблокировать markSeen/saveState
-        // для всей пачки — иначе письма так и останутся непрочитанными и будут
-        // бесконечно пересчитываться при каждой проверке.
-        console.error('[kwork] Не удалось отправить сообщение о заказе:', err.message);
+    for (const email of digest.newEmails) {
+      if (email.date) {
+        const lagSec = Math.round((Date.now() - new Date(email.date).getTime()) / 1000);
+        console.log(`[kwork] Письмо от ${email.date.toISOString()}, обнаружено через ${lagSec}с`);
       }
     }
+
+    if (notifyChatId) {
+      for (const message of digest.messages) {
+        try {
+          await bot.sendMessage(notifyChatId, message.text, {
+            parse_mode: 'MarkdownV2',
+            // Тихое сообщение, пока не подтверждены все 4 критерия фильтра
+            disable_notification: message.silent,
+          });
+        } catch (err) {
+          // Не даём одному проблемному сообщению заблокировать markSeen/saveState
+          // для всей пачки — иначе письма так и останутся непрочитанными и будут
+          // бесконечно пересчитываться при каждой проверке.
+          console.error('[kwork] Не удалось отправить сообщение о заказе:', err.message);
+        }
+      }
+    }
+
+    for (const email of digest.newEmails) {
+      await markSeen(email.uid);
+    }
+
+    state.lastRun = new Date().toISOString();
+    state.processedMessageIds = [...state.processedMessageIds, ...digest.newEmails.map((e) => e.messageId)].slice(-MAX_PROCESSED_IDS);
+    saveState(state);
+
+    agentRegistry.recordSuccess('kwork-monitor', `checked=${digest.checked} matched=${digest.matched}`);
+    return { checked: digest.checked, matched: digest.matched };
+  } catch (err) {
+    agentRegistry.recordError('kwork-monitor', err);
+    throw err;
   }
-
-  for (const email of digest.newEmails) {
-    await markSeen(email.uid);
-  }
-
-  state.lastRun = new Date().toISOString();
-  state.processedMessageIds = [...state.processedMessageIds, ...digest.newEmails.map((e) => e.messageId)].slice(-MAX_PROCESSED_IDS);
-  saveState(state);
-
-  return { checked: digest.checked, matched: digest.matched };
 }
 
 const IDLE_TIMEOUT_MS = 20 * 60 * 1000;
@@ -389,6 +404,7 @@ bot.on('voice', async (msg) => {
 
   let oggPath, mp3Path;
 
+  agentRegistry.recordStart('voice-pipeline', `voice message chatId=${chatId}`);
   try {
     await bot.sendChatAction(chatId, 'typing');
     const statusMsg = await bot.sendMessage(chatId, '🎤 Распознаю голосовое сообщение...');
@@ -405,6 +421,7 @@ bot.on('voice', async (msg) => {
         chat_id: chatId,
         message_id: statusMsg.message_id,
       });
+      agentRegistry.recordSuccess('voice-pipeline', `chatId=${chatId}: речь не распознана`);
       return;
     }
 
@@ -430,6 +447,7 @@ bot.on('voice', async (msg) => {
       await bot.sendMessage(chatId, reply);
     }
 
+    agentRegistry.recordSuccess('voice-pipeline', `chatId=${chatId}: ok`);
   } catch (err) {
     // err.message alone hides the actual cause (ffmpeg stderr, Groq's parsed
     // error body) — log everything so a failure is diagnosable from logs alone.
@@ -437,6 +455,7 @@ bot.on('voice', async (msg) => {
     if (err.status || err.error) {
       console.error('[voice] Groq API ответ:', JSON.stringify({ status: err.status, error: err.error }));
     }
+    agentRegistry.recordError('voice-pipeline', err);
     await bot.sendMessage(chatId, `❌ Ошибка при обработке голосового сообщения: ${err.message}`);
   } finally {
     cleanupFiles(oggPath, mp3Path);
@@ -490,6 +509,16 @@ const PORT = process.env.PORT || 3000;
 api.listen(PORT, () => {
   console.log(`[Джарвис] HTTP API слушает порт ${PORT}`);
 });
+
+// === Dashboard API (мониторинг агентов для внешнего фронтенда) ===
+
+const { createApp: createDashboardApp, startServer: startDashboardServer } = require('./api/server');
+
+const dashboardRunners = {
+  'kwork-monitor': () => checkKworkOrders(process.env.TELEGRAM_CHAT_ID),
+};
+
+startDashboardServer(createDashboardApp(agentRegistry, dashboardRunners));
 
 // === Запуск ===
 
