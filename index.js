@@ -121,6 +121,32 @@ async function checkKworkOrders(notifyChatId) {
   return { checked: digest.checked, matched: digest.matched };
 }
 
+const IDLE_TIMEOUT_MS = 20 * 60 * 1000;
+
+// client.idle() has no built-in timeout — a half-open TCP socket (Gmail drops
+// idle IMAP connections silently sometimes) leaves it pending forever with no
+// error, so the reconnect logic below never fires. Race it against a timer and
+// force the socket closed if it fires, so the outer catch/reconnect always runs.
+async function idleWithTimeout(client, timeoutMs) {
+  let timer;
+  let timedOut = false;
+  try {
+    await Promise.race([
+      client.idle(),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => {
+          timedOut = true;
+          client.close();
+          reject(new Error('IDLE timeout — соединение не отвечает'));
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+  return timedOut;
+}
+
 async function startKworkImapIdle(notifyChatId) {
   while (true) {
     const client = new ImapFlow({
@@ -134,6 +160,7 @@ async function startKworkImapIdle(notifyChatId) {
       logger: false,
     });
     let hasNewMail = false;
+    let connectionDead = false;
     client.on('exists', () => { hasNewMail = true; });
     try {
       await client.connect();
@@ -142,7 +169,7 @@ async function startKworkImapIdle(notifyChatId) {
         console.log('[kwork IDLE] Подключён, начальная проверка почты...');
         await checkKworkOrders(notifyChatId);
         while (true) {
-          await client.idle();
+          await idleWithTimeout(client, IDLE_TIMEOUT_MS);
           // Gmail шлёт по IDLE не только реальные новые письма, но и keepalive/
           // flag-обновления — client.idle() резолвится и на них. Без фильтра
           // по 'exists' это гоняло полный checkKworkOrders() каждые ~2 сек,
@@ -155,9 +182,14 @@ async function startKworkImapIdle(notifyChatId) {
         lock.release();
       }
     } catch (err) {
+      connectionDead = err.message === 'IDLE timeout — соединение не отвечает' || err.code === 'NoConnection';
       console.error('[kwork IDLE] Ошибка, переподключение через 30 сек:', err.message);
     } finally {
-      try { await client.logout(); } catch (_) {}
+      // После таймаута сокет уже принудительно закрыт (client.close()) —
+      // logout() послал бы команду по мёртвому сокету и завис бы точно так же.
+      if (!connectionDead) {
+        try { await client.logout(); } catch (_) {}
+      }
     }
     await new Promise((r) => setTimeout(r, 30000));
   }
