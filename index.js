@@ -247,9 +247,11 @@ async function downloadTelegramFile(fileId) {
 function convertOggToMp3(oggPath) {
   const mp3Path = oggPath.replace('.ogg', '.mp3');
   return new Promise((resolve, reject) => {
-    exec(`ffmpeg -i "${oggPath}" -ar 16000 -ac 1 -b:a 64k "${mp3Path}" -y`, (err) => {
+    // exec's own err.message only echoes the command line, not why it failed —
+    // stderr (e.g. "ffmpeg: not found") only surfaces via the 3rd callback arg.
+    exec(`ffmpeg -i "${oggPath}" -ar 16000 -ac 1 -b:a 64k "${mp3Path}" -y`, (err, stdout, stderr) => {
       if (err) {
-        reject(new Error(`ffmpeg: ${err.message}`));
+        reject(new Error(`ffmpeg: ${err.message}\nstderr: ${stderr}`));
       } else {
         resolve(mp3Path);
       }
@@ -366,8 +368,13 @@ bot.on('voice', async (msg) => {
     await bot.sendMessage(chatId, reply);
 
   } catch (err) {
-    console.error('[voice]', err.message);
-    await bot.sendMessage(chatId, '❌ Ошибка при обработке голосового сообщения.');
+    // err.message alone hides the actual cause (ffmpeg stderr, Groq's parsed
+    // error body) — log everything so a failure is diagnosable from logs alone.
+    console.error('[voice] Полная ошибка:', err.stack || err.message);
+    if (err.status || err.error) {
+      console.error('[voice] Groq API ответ:', JSON.stringify({ status: err.status, error: err.error }));
+    }
+    await bot.sendMessage(chatId, `❌ Ошибка при обработке голосового сообщения: ${err.message}`);
   } finally {
     cleanupFiles(oggPath, mp3Path);
   }
