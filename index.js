@@ -12,7 +12,6 @@ process.on('unhandledRejection', (reason) => {
 
 const TelegramBot = require('node-telegram-bot-api');
 const Groq = require('groq-sdk');
-const OpenAI = require('openai');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
@@ -43,7 +42,6 @@ process.on('SIGTERM', async () => {
 });
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // Уведомления о деградации LLM — не молча падать, слать в Telegram.
 llmEvents.on('fallback', ({ reason }) => {
@@ -260,9 +258,9 @@ function convertOggToMp3(oggPath) {
 }
 
 async function transcribeWithWhisper(mp3Path) {
-  const transcription = await openai.audio.transcriptions.create({
+  const transcription = await groq.audio.transcriptions.create({
     file: fs.createReadStream(mp3Path),
-    model: 'whisper-1',
+    model: 'whisper-large-v3',
     language: 'ru',
   });
   return transcription.text;
