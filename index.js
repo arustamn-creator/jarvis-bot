@@ -24,8 +24,13 @@ const { telegramLimiter } = require('./rate_limits');
 const { markSeen } = require('./kwork_mail');
 const { loadState, saveState } = require('./kwork_state');
 const { buildKworkDigest } = require('./kwork_digest');
+// node-telegram-bot-api's internal HTTP client (request, forever-agent) has no
+// timeout by default — a half-open socket (e.g. mid setWebHook-clear-on-409
+// retry) hangs the request forever, so the polling loop's own reschedule
+// never fires again and the bot goes silently unresponsive with no restart.
 const bot = new TelegramBot(process.env.TELEGRAM_TOKEN, {
-  polling: true
+  polling: true,
+  request: { timeout: 15000 },
 });
 bot.on('polling_error', (err) => {
   console.error('[Джарвис] Ошибка поллинга:', err.message);
