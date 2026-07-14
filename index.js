@@ -58,6 +58,8 @@ llmEvents.on('exhausted', ({ anthropicError, groqError }) => {
   ).catch((err) => console.error('[llm] Не удалось отправить уведомление об отказе:', err.message));
 });
 
+const VOICE_REPLY_ENABLED = process.env.VOICE_REPLY_ENABLED !== 'false';
+
 const SYSTEM_PROMPT =
   'Ты умный ассистент по имени Jarvis. ' +
   'Отвечай по существу и так подробно, как требует вопрос — короткий вопрос заслуживает короткий ответ, сложный можно разобрать по пунктам. ' +
@@ -268,6 +270,55 @@ async function transcribeWithWhisper(mp3Path) {
   return transcription.text;
 }
 
+// Голосом озвучиваем только обычный разговорный текст — код, логи, ссылки,
+// таблицы и JSON всегда идут текстом, даже если вопрос был голосовым.
+function isVoiceUnsuitable(text) {
+  if (text.length > 4500) return true; // лимит Yandex SpeechKit — 5000 символов на запрос
+  if (/```/.test(text)) return true;
+  if (/https?:\/\//i.test(text)) return true;
+  if (/^\s*\|.*\|\s*\n\s*\|[\s:-]+\|/m.test(text)) return true; // markdown-таблица
+
+  const trimmed = text.trim();
+  if (/^[{[]/.test(trimmed) && /[}\]]$/.test(trimmed)) {
+    try {
+      JSON.parse(trimmed);
+      return true;
+    } catch (_) { /* не JSON — не блокируем */ }
+  }
+
+  const logLikeLines = text.split('\n').filter((line) =>
+    /^\[?\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}|^\s*at\s+\S+\(.*:\d+:\d+\)/.test(line)
+  );
+  if (logLikeLines.length >= 3) return true; // листинг логов / stack trace
+
+  return false;
+}
+
+// Yandex SpeechKit v1 отдаёт OggOpus по умолчанию — ровно формат, который
+// требует Telegram sendVoice, конвертация через ffmpeg не нужна.
+async function synthesizeSpeech(text) {
+  const params = new URLSearchParams({
+    text,
+    lang: 'ru-RU',
+    voice: 'filipp',
+    folderId: process.env.YANDEX_FOLDER_ID,
+  });
+
+  const response = await axios.post(
+    'https://tts.api.cloud.yandex.net/speech/v1/tts:synthesize',
+    params.toString(),
+    {
+      headers: {
+        Authorization: `Api-Key ${process.env.YANDEX_API_KEY}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      responseType: 'arraybuffer',
+    }
+  );
+
+  return Buffer.from(response.data);
+}
+
 function cleanupFiles(...files) {
   for (const f of files) {
     try {
@@ -365,7 +416,19 @@ bot.on('voice', async (msg) => {
 
     await bot.sendChatAction(chatId, 'typing');
     const reply = await askClaude(chatId, transcribed);
-    await bot.sendMessage(chatId, reply);
+
+    const canSpeak = VOICE_REPLY_ENABLED && process.env.YANDEX_API_KEY && process.env.YANDEX_FOLDER_ID && !isVoiceUnsuitable(reply);
+    if (canSpeak) {
+      try {
+        const oggBuffer = await synthesizeSpeech(reply);
+        await bot.sendVoice(chatId, oggBuffer, {}, { filename: 'reply.ogg', contentType: 'audio/ogg' });
+      } catch (ttsErr) {
+        console.error('[tts] Не удалось озвучить ответ, отправляю текстом:', ttsErr.stack || ttsErr.message);
+        await bot.sendMessage(chatId, reply);
+      }
+    } else {
+      await bot.sendMessage(chatId, reply);
+    }
 
   } catch (err) {
     // err.message alone hides the actual cause (ffmpeg stderr, Groq's parsed
