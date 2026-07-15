@@ -5,17 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
 <title>JARVIS // Control Center</title>
 <style>
+  /* Палитра «Кубачи» — чернение по серебру: графитовый фон, серебро для
+     заголовков/активных элементов, приглушённая бирюза как акцент. */
   :root {
-    --bg: #06060d;
-    --bg-panel: #0d0d1b;
-    --bg-panel-2: #12122250;
-    --border: #23233f;
-    --text: #e9e9f7;
-    --text-dim: #8b8bb0;
-    --pink: #ff2f92;
-    --purple: #9a5cff;
-    --cyan: #22e6ff;
-    --danger: #ff3b6b;
+    --bg-1: #16181a;
+    --bg-2: #1f2123;
+    --bg-panel: #202325;
+    --border: rgba(192, 192, 192, 0.25);
+    --border-strong: rgba(192, 192, 192, 0.5);
+    --text: #dcdddb;
+    --text-dim: #9aa0a3;
+    --silver: #c0c0c0;
+    --turquoise: #5fd7d7;
+    --turquoise-bg: #0d3b3b;
+    --danger: #c9635a;
     --radius: 14px;
   }
 
@@ -24,7 +27,7 @@
   html, body {
     margin: 0;
     padding: 0;
-    background: var(--bg);
+    background: var(--bg-1);
     color: var(--text);
     font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
     min-height: 100vh;
@@ -32,9 +35,10 @@
 
   body {
     background:
-      radial-gradient(60vw 60vw at 85% -10%, #ff2f9214 0%, transparent 60%),
-      radial-gradient(60vw 60vw at -10% 10%, #22e6ff14 0%, transparent 55%),
-      var(--bg);
+      radial-gradient(50vw 50vw at 90% -10%, #5fd7d70d 0%, transparent 60%),
+      radial-gradient(50vw 50vw at -10% 110%, #c0c0c00a 0%, transparent 55%),
+      linear-gradient(165deg, var(--bg-1), var(--bg-2));
+    background-attachment: fixed;
   }
 
   .mono { font-family: 'Consolas', 'SFMono-Regular', Menlo, monospace; }
@@ -42,26 +46,49 @@
   /* ── Layout ─────────────────────────────────────────────────────── */
 
   .wrap {
-    max-width: 1100px;
+    max-width: 1280px;
     margin: 0 auto;
     padding: clamp(16px, 4vw, 36px);
   }
 
   header.top {
+    position: relative;
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     gap: 16px;
     margin-bottom: 28px;
     flex-wrap: wrap;
+    padding: 18px clamp(14px, 3vw, 24px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-panel);
+    overflow: hidden;
   }
+
+  /* Едва заметный геометрический орнамент в духе кубачинской гравировки —
+     решётка из пересекающихся диагоналей поверх графитовой панели. */
+  header.top::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 0.5;
+    pointer-events: none;
+    background:
+      repeating-linear-gradient(45deg, rgba(192,192,192,0.05) 0 1px, transparent 1px 22px),
+      repeating-linear-gradient(-45deg, rgba(95,215,215,0.05) 0 1px, transparent 1px 22px);
+    -webkit-mask-image: linear-gradient(90deg, #000 0%, transparent 75%);
+    mask-image: linear-gradient(90deg, #000 0%, transparent 75%);
+  }
+
+  .brand { position: relative; }
 
   .brand h1 {
     margin: 0;
     font-size: clamp(20px, 4vw, 30px);
     letter-spacing: 0.06em;
     font-weight: 800;
-    background: linear-gradient(90deg, var(--cyan), var(--purple) 55%, var(--pink));
+    background: linear-gradient(90deg, var(--silver), var(--turquoise) 80%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -75,6 +102,7 @@
   }
 
   .top-actions {
+    position: relative;
     display: flex;
     gap: 8px;
     align-items: center;
@@ -88,11 +116,11 @@
     background: var(--bg-panel);
     color: var(--text);
     padding: 9px 14px;
-    transition: border-color .15s, box-shadow .15s, transform .05s;
+    transition: border-color .15s, box-shadow .15s, transform .05s, background .15s;
   }
-  button:hover { border-color: var(--cyan); box-shadow: 0 0 12px #22e6ff33; }
+  button:hover { border-color: var(--turquoise); box-shadow: 0 0 8px #5fd7d733; }
   button:active { transform: scale(0.98); }
-  button:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
 
   button.ghost {
     background: transparent;
@@ -103,10 +131,11 @@
   button.ghost:hover { color: var(--text); border-color: var(--border); box-shadow: none; }
 
   button.primary {
-    border-color: var(--purple);
-    background: linear-gradient(135deg, #9a5cff26, #22e6ff1a);
+    border-color: var(--turquoise);
+    background: linear-gradient(135deg, var(--turquoise-bg), #14262633);
+    color: var(--turquoise);
   }
-  button.primary:hover { box-shadow: 0 0 16px #9a5cff55; }
+  button.primary:hover { box-shadow: 0 0 12px #5fd7d755; }
 
   /* ── Stat tiles ─────────────────────────────────────────────────── */
 
@@ -125,19 +154,6 @@
     position: relative;
     overflow: hidden;
   }
-  .stat::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 1px;
-    background: linear-gradient(135deg, var(--cyan), transparent 40%, var(--pink) 100%);
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    opacity: 0.35;
-    pointer-events: none;
-  }
   .stat .label {
     font-size: 11px;
     letter-spacing: 0.08em;
@@ -148,12 +164,12 @@
   .stat .value {
     font-size: clamp(18px, 3vw, 26px);
     font-weight: 700;
+    color: var(--text);
   }
-  .stat.cyan .value { color: var(--cyan); text-shadow: 0 0 14px #22e6ff55; }
-  .stat.purple .value { color: var(--purple); text-shadow: 0 0 14px #9a5cff55; }
-  .stat.pink .value { color: var(--pink); text-shadow: 0 0 14px #ff2f9255; }
+  .stat.turquoise .value { color: var(--turquoise); }
+  .stat.silver .value { color: var(--silver); }
 
-  /* ── Agent cards ────────────────────────────────────────────────── */
+  /* ── Sections & agent cards ─────────────────────────────────────── */
 
   h2.section {
     font-size: 13px;
@@ -161,11 +177,21 @@
     text-transform: uppercase;
     color: var(--text-dim);
     margin: 0 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
+  h2.section::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  h2.section.section-secondary { margin-top: 30px; }
 
   .agents-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     gap: 14px;
   }
 
@@ -182,8 +208,8 @@
   }
   .card:hover {
     transform: translateY(-2px);
-    border-color: var(--purple);
-    box-shadow: 0 0 22px #9a5cff2e;
+    border-color: var(--border-strong);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
   }
 
   .card-head {
@@ -193,9 +219,33 @@
     gap: 8px;
   }
 
+  .card-title {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .card-title .icon {
+    font-size: 20px;
+    line-height: 1;
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9px;
+    background: rgba(192, 192, 192, 0.08);
+    border: 1px solid var(--border);
+  }
+
+  .card-title .names { min-width: 0; }
+
   .card-head .name {
     font-weight: 700;
-    font-size: 16px;
+    font-size: 15px;
+    color: var(--text);
   }
   .card-head .id {
     color: var(--text-dim);
@@ -211,10 +261,12 @@
     border-radius: 999px;
     white-space: nowrap;
     border: 1px solid transparent;
+    flex-shrink: 0;
   }
-  .badge.active { color: var(--cyan); border-color: var(--cyan); box-shadow: 0 0 10px #22e6ff44 inset; }
-  .badge.idle { color: var(--purple); border-color: var(--purple); box-shadow: 0 0 10px #9a5cff33 inset; }
-  .badge.error { color: var(--danger); border-color: var(--danger); box-shadow: 0 0 10px #ff3b6b44 inset; animation: pulse 1.4s infinite; }
+  .badge.active { color: var(--turquoise); background: var(--turquoise-bg); border-color: var(--turquoise); }
+  .badge.idle { color: var(--silver); background: rgba(192, 192, 192, 0.08); border-color: var(--border-strong); }
+  .badge.error { color: var(--danger); background: rgba(201, 99, 90, 0.12); border-color: var(--danger); animation: pulse 1.4s infinite; }
+  .badge.pending { color: var(--text-dim); background: transparent; border: 1px dashed var(--border-strong); }
 
   @keyframes pulse {
     0%, 100% { opacity: 1; }
@@ -225,7 +277,9 @@
     color: var(--text-dim);
     font-size: 13px;
     line-height: 1.45;
-    flex-grow: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .card .meta {
@@ -234,6 +288,7 @@
     display: flex;
     flex-direction: column;
     gap: 3px;
+    flex-grow: 1;
   }
   .card .meta strong { color: var(--text); font-weight: 600; }
 
@@ -246,12 +301,27 @@
     padding: 7px 12px;
   }
 
+  .card.card-placeholder {
+    cursor: default;
+    border-style: dashed;
+    border-color: var(--border);
+    opacity: 0.85;
+  }
+  .card.card-placeholder:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: var(--border-strong);
+  }
+  .card.card-placeholder .desc {
+    white-space: normal;
+  }
+
   /* ── Modal ──────────────────────────────────────────────────────── */
 
   .overlay {
     position: fixed;
     inset: 0;
-    background: #020208cc;
+    background: #0a0b0ccc;
     backdrop-filter: blur(3px);
     display: flex;
     align-items: center;
@@ -267,8 +337,8 @@
     max-height: 86vh;
     overflow-y: auto;
     background: var(--bg-panel);
-    border: 1px solid var(--purple);
-    box-shadow: 0 0 40px #9a5cff33;
+    border: 1px solid var(--border-strong);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
     border-radius: var(--radius);
     padding: 20px;
   }
@@ -280,7 +350,7 @@
     gap: 12px;
     margin-bottom: 14px;
   }
-  .modal-head h3 { margin: 0 0 4px; font-size: 18px; }
+  .modal-head h3 { margin: 0 0 4px; font-size: 18px; color: var(--text); }
   .modal-head .id { color: var(--text-dim); font-size: 12px; }
 
   .modal .row {
@@ -296,7 +366,7 @@
 
   .logs {
     margin-top: 14px;
-    background: #05050c;
+    background: #121415;
     border: 1px solid var(--border);
     border-radius: 10px;
     padding: 10px 12px;
@@ -309,7 +379,7 @@
   .logs .log-line .t { color: var(--text-dim); flex-shrink: 0; }
   .logs .log-line.info .m { color: var(--text); }
   .logs .log-line.error .m { color: var(--danger); }
-  .logs .log-line.warn .m { color: var(--cyan); }
+  .logs .log-line.warn .m { color: var(--turquoise); }
   .logs .empty { color: var(--text-dim); }
 
   .modal-actions {
@@ -325,15 +395,15 @@
     width: 100%;
     max-width: 380px;
     background: var(--bg-panel);
-    border: 1px solid var(--cyan);
-    box-shadow: 0 0 40px #22e6ff33;
+    border: 1px solid var(--turquoise);
+    box-shadow: 0 0 30px #5fd7d726;
     border-radius: var(--radius);
     padding: 24px;
     text-align: center;
   }
   .gate-box h2 {
     margin: 0 0 6px;
-    background: linear-gradient(90deg, var(--cyan), var(--pink));
+    background: linear-gradient(90deg, var(--silver), var(--turquoise));
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -345,12 +415,12 @@
     padding: 11px 12px;
     border-radius: 10px;
     border: 1px solid var(--border);
-    background: #05050c;
+    background: #121415;
     color: var(--text);
     font: inherit;
     margin-bottom: 12px;
   }
-  .gate-box input:focus { outline: none; border-color: var(--purple); box-shadow: 0 0 10px #9a5cff44; }
+  .gate-box input:focus { outline: none; border-color: var(--turquoise); box-shadow: 0 0 8px #5fd7d744; }
   .gate-box button { width: 100%; }
   .gate-error { color: var(--danger); font-size: 12px; min-height: 16px; margin-top: 10px; }
 
@@ -363,7 +433,7 @@
     transform: translateX(-50%);
     background: var(--bg-panel);
     border: 1px solid var(--danger);
-    box-shadow: 0 0 20px #ff3b6b44;
+    box-shadow: 0 0 16px #c9635a33;
     color: var(--text);
     padding: 10px 16px;
     border-radius: 10px;
@@ -372,6 +442,7 @@
     opacity: 0;
     pointer-events: none;
     transition: opacity .2s;
+    max-width: calc(100vw - 32px);
   }
   #toast.show { opacity: 1; }
 
@@ -416,15 +487,15 @@
   </header>
 
   <div class="stats">
-    <div class="stat cyan">
+    <div class="stat silver">
       <div class="label">Агентов всего</div>
       <div class="value" id="statTotal">—</div>
     </div>
-    <div class="stat purple">
+    <div class="stat turquoise">
       <div class="label">Активны</div>
       <div class="value" id="statActive">—</div>
     </div>
-    <div class="stat pink">
+    <div class="stat silver">
       <div class="label">Аптайм</div>
       <div class="value" id="statUptime">—</div>
     </div>
@@ -434,9 +505,26 @@
     </div>
   </div>
 
-  <h2 class="section">Агенты</h2>
+  <h2 class="section">Основные процессы</h2>
   <div class="agents-grid" id="agentsGrid">
     <div class="empty-state">Загрузка...</div>
+  </div>
+
+  <h2 class="section section-secondary">Скоро</h2>
+  <div class="agents-grid">
+    <div class="card card-placeholder">
+      <div class="card-head">
+        <div class="card-title">
+          <span class="icon">➕</span>
+          <div class="names">
+            <div class="name">Ещё 19 агентов</div>
+            <div class="id mono">в разработке</div>
+          </div>
+        </div>
+        <span class="badge pending">Не подключён</span>
+      </div>
+      <div class="desc">Coder, Researcher, Memory, Self-Improve и другие — появятся здесь по мере готовности.</div>
+    </div>
   </div>
 </div>
 
@@ -449,7 +537,7 @@
       </div>
       <span class="badge" id="modalStatus">—</span>
     </div>
-    <p class="desc" id="modalDesc" style="color:var(--text-dim); font-size:13px; line-height:1.5;"></p>
+    <p class="desc" id="modalDesc" style="color:var(--text-dim); font-size:13px; line-height:1.5; white-space:normal;"></p>
     <div class="row"><span>Расписание</span><span id="modalSchedule">—</span></div>
     <div class="row"><span>Последний запуск</span><span id="modalLastRun">—</span></div>
     <div class="row"><span>Последняя ошибка</span><span id="modalLastError">—</span></div>
@@ -476,6 +564,15 @@
   var API_BASE = 'https://jarvis-bot-production-90c2.up.railway.app';
   var TOKEN_KEY = 'jarvis_dashboard_token';
   var REFRESH_MS = 20000;
+
+  // Эмодзи-плейсхолдеры для карточек — заранее заведены под будущих
+  // агентов, неизвестные id получают дефолтную иконку.
+  var AGENT_ICONS = {
+    'chat-handler': '💬',
+    'kwork-monitor': '📨',
+    'voice-pipeline': '🎙️',
+  };
+  function agentIcon(id) { return AGENT_ICONS[id] || '🤖'; }
 
   var state = {
     token: localStorage.getItem(TOKEN_KEY) || '',
@@ -631,7 +728,15 @@
       var head = document.createElement('div');
       head.className = 'card-head';
 
+      var title = document.createElement('div');
+      title.className = 'card-title';
+
+      var icon = document.createElement('span');
+      icon.className = 'icon';
+      icon.textContent = agentIcon(agent.id);
+
       var names = document.createElement('div');
+      names.className = 'names';
       var nameEl = document.createElement('div');
       nameEl.className = 'name';
       nameEl.textContent = agent.name;
@@ -641,15 +746,19 @@
       names.appendChild(nameEl);
       names.appendChild(idEl);
 
+      title.appendChild(icon);
+      title.appendChild(names);
+
       var badge = document.createElement('span');
       badge.className = 'badge ' + agent.status;
       badge.textContent = statusLabel(agent.status);
 
-      head.appendChild(names);
+      head.appendChild(title);
       head.appendChild(badge);
 
       var desc = document.createElement('div');
       desc.className = 'desc';
+      desc.title = agent.description;
       desc.textContent = agent.description;
 
       var meta = document.createElement('div');
