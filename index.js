@@ -522,6 +522,11 @@ const dashboardRunners = {
 
 api.use(createDashboardRouter(agentRegistry, dashboardRunners));
 
+// Статическая страница дашборда — тот же порт/процесс, что и /api/*.
+api.get('/dashboard', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
 const PORT = process.env.PORT || 3000;
 api.listen(PORT, () => {
   console.log(`[Джарвис] HTTP API слушает порт ${PORT}`);
