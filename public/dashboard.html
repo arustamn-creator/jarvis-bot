@@ -20,6 +20,10 @@
     --turquoise-bg: #0d3b3b;
     --danger: #c9635a;
     --radius: 14px;
+    --core-blue: #38b6ff;
+    --core-blue-bright: #9fe6ff;
+    --core-blue-deep: #1464c9;
+    --core-white-hot: #f4fbff;
   }
 
   * { box-sizing: border-box; }
@@ -453,12 +457,137 @@
 
   /* ── Map view — светящееся ядро системы и агенты вокруг ──────────── */
 
+  /* Полноэкранная живая карта — #mapView становится fixed-полотном на весь
+     экран поверх обычного дашборда (шапка/статистика/вкладки Сетки
+     остаются в DOM, карта их визуально перекрывает), со своим заголовком,
+     часами, статистикой и звёздным полем декоративных агентов вокруг
+     ядра. */
+
+  #mapView.hidden { display: none; }
+  #mapView {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    overflow: hidden;
+    background:
+      radial-gradient(1100px 750px at 12% 8%, #123a5c26 0%, transparent 60%),
+      radial-gradient(900px 650px at 88% 92%, #0d2d4d26 0%, transparent 60%),
+      #05060a;
+  }
+
+  .map-vignette {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+    box-shadow: inset 0 0 170px 46px rgba(0, 0, 0, 0.88);
+  }
+
+  .map-header {
+    position: absolute;
+    top: 24px;
+    left: 30px;
+    z-index: 10;
+  }
+  .map-header h1 {
+    margin: 0;
+    font-size: clamp(16px, 2.2vw, 21px);
+    letter-spacing: 0.1em;
+    color: var(--text);
+    text-shadow: 0 0 14px #1a6fd680;
+  }
+  .map-header h1 .sep { color: var(--core-blue-bright); margin: 0 4px; }
+  .map-header p {
+    margin: 5px 0 0;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .map-clock {
+    position: absolute;
+    top: 24px;
+    right: 30px;
+    z-index: 10;
+    text-align: right;
+  }
+  .map-clock-time {
+    font-family: 'Consolas', 'SFMono-Regular', Menlo, monospace;
+    font-size: 20px;
+    letter-spacing: 0.04em;
+    color: var(--core-blue-bright);
+  }
+  .map-clock-date {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+  .map-exit-btn {
+    margin-top: 10px;
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+
+  .map-stats-panel {
+    position: absolute;
+    left: 30px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .map-stat-label {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 3px;
+  }
+  .map-stat-value {
+    font-size: clamp(18px, 2.4vw, 24px);
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  /* Звёздное поле декоративных (пока не подключённых) агентов — разбросаны
+     по всему полотну карты, без связи с ядром. */
+  .map-plane {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+  }
+  .map-star {
+    position: absolute;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    border: 1px solid rgba(0, 0, 0, 0.25);
+  }
+  .map-star.idle { background: var(--silver); box-shadow: 0 0 6px 2px #c0c0c055; }
+  .map-star.active { background: var(--turquoise); box-shadow: 0 0 8px 3px #5fd7d799; }
+  .map-star.error { background: var(--danger); box-shadow: 0 0 8px 3px #c9635a99; animation: pulse 1.4s infinite; }
+  .map-star-label {
+    position: absolute;
+    transform: translate(-50%, 0);
+    font-size: 10px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
   .map-container {
-    position: relative;
-    width: 100%;
-    max-width: 560px;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: min(70vh, 70vw, 560px);
     aspect-ratio: 1 / 1;
-    margin: 0 auto;
+    z-index: 8;
     border: 1px solid var(--border);
     border-radius: 50%;
     background: radial-gradient(circle at 50% 50%, #1c1e2000 0%, #14161700 55%, transparent 75%);
@@ -471,11 +600,11 @@
     height: 100%;
     overflow: visible;
   }
-  /* Линии-разряды к ядру — тёплый огненный тон, отдельный от статусных
+  /* Линии-разряды к ядру — электрический синий, отдельный от статусных
      цветов точек, лёгкое асинхронное мерцание. */
   .map-bolt {
     fill: none;
-    stroke: #ffb347;
+    stroke: var(--core-blue-bright);
     stroke-width: 1;
     opacity: 0.6;
     vector-effect: non-scaling-stroke;
@@ -486,11 +615,14 @@
     50% { opacity: 0.8; }
   }
 
-  /* Ядро — живая плазма/сгусток огня: несколько полупрозрачных
-     асимметричных "капель" со смещёнными центрами и независимо
-     анимированным border-radius (union их силуэтов даёт неровный,
-     постоянно текущий край вместо идеальной окружности), поверх —
-     мягкое размытое гало и маленькая яркая сердцевина.
+  /* Ядро — шар из ветвящихся электрических разрядов. Форма шара не
+     рисуется отдельным градиентом: рваный "корпус" — залитый полигон,
+     вершины которого совпадают с теми же точками, через которые проходят
+     яркие трещины-разряды (renderCoreLightning в скрипте), поэтому силуэт
+     целиком порождён самими разрядами. Белая раскалённая сердцевина
+     (.core-hot) — единственный сплошной элемент, изображающий центр
+     вспышки. Никакого размытого гало снаружи — только небольшой
+     drop-shadow на самих линиях.
      Дыхание — на .map-core-wrap (transform, дёшево для рендера);
      hover/touch-реакция — на отдельном .map-core-hit снаружи, чтобы не
      конфликтовать с тем же transform-свойством, которое уже анимирует
@@ -520,90 +652,33 @@
     50% { transform: scale(1.08); }
   }
 
-  /* Разлитое гало без резкого края — заменяет прежний box-shadow-контур
-     сферы мягким затуханием наружу. */
-  .core-halo {
+  .core-svg {
     position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 110px;
-    height: 110px;
-    transform: translate(-50%, -50%);
-    border-radius: 50%;
-    background: radial-gradient(circle, #ff6b1a4d 0%, #ff6b1a26 45%, transparent 75%);
-    filter: blur(9px);
-    animation: haloPulse 4.4s ease-in-out infinite;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
   }
-  @keyframes haloPulse {
-    0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
-    50% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.15); }
+  .core-ray-group {
+    filter: drop-shadow(0 0 1.5px var(--core-blue)) drop-shadow(0 0 4px #1a6fd680);
+  }
+  .core-ray {
+    stroke-linecap: round;
+    fill: none;
   }
 
-  .core-blob {
-    position: absolute;
-    transform: translate(-50%, -50%);
-    mix-blend-mode: screen;
-    opacity: 0.92;
-  }
-  .core-blob.b1 {
-    left: 50%;
-    top: 50%;
-    width: 92px;
-    height: 92px;
-    background: radial-gradient(circle at 40% 35%, #ffcb8a 0%, #ff6b1a 34%, #ff8c42 60%, transparent 80%);
-    box-shadow: 0 0 18px 4px #ff6b1a40;
-    animation: coreMorph1 5.2s ease-in-out infinite;
-  }
-  .core-blob.b2 {
-    left: 55%;
-    top: 46%;
-    width: 68px;
-    height: 68px;
-    background: radial-gradient(circle at 62% 58%, #ffb347 0%, #ff8c42 48%, transparent 78%);
-    animation: coreMorph2 6.4s ease-in-out infinite;
-    animation-delay: -1.4s;
-  }
-  .core-blob.b3 {
-    left: 45%;
-    top: 56%;
-    width: 60px;
-    height: 60px;
-    background: radial-gradient(circle at 42% 68%, #ffd39a 0%, #ff6b1a 52%, transparent 80%);
-    animation: coreMorph3 4.1s ease-in-out infinite;
-    animation-delay: -2.6s;
-    opacity: 0.78;
-  }
-  @keyframes coreMorph1 {
-    0%   { border-radius: 40% 60% 58% 42% / 55% 40% 60% 45%; transform: translate(-50%, -50%) rotate(0deg); }
-    33%  { border-radius: 60% 40% 44% 56% / 42% 60% 38% 58%; transform: translate(-53%, -47%) rotate(6deg); }
-    66%  { border-radius: 44% 56% 60% 40% / 60% 42% 58% 40%; transform: translate(-47%, -53%) rotate(-6deg); }
-    100% { border-radius: 40% 60% 58% 42% / 55% 40% 60% 45%; transform: translate(-50%, -50%) rotate(0deg); }
-  }
-  @keyframes coreMorph2 {
-    0%   { border-radius: 58% 42% 40% 60% / 42% 58% 42% 58%; transform: translate(-50%, -50%) scale(1); }
-    50%  { border-radius: 42% 58% 60% 40% / 58% 40% 60% 42%; transform: translate(-46%, -54%) scale(1.12); }
-    100% { border-radius: 58% 42% 40% 60% / 42% 58% 42% 58%; transform: translate(-50%, -50%) scale(1); }
-  }
-  @keyframes coreMorph3 {
-    0%   { border-radius: 60% 40% 55% 45% / 40% 60% 38% 62%; transform: translate(-50%, -50%); }
-    50%  { border-radius: 40% 60% 42% 58% / 60% 40% 62% 38%; transform: translate(-54%, -46%); }
-    100% { border-radius: 60% 40% 55% 45% / 40% 60% 38% 62%; transform: translate(-50%, -50%); }
-  }
-
-  /* Яркая горячая сердцевина в центре — единственный "хайлайт", чтобы не
-     читалось как блик на глянцевой сфере. */
+  /* Яркая раскалённая сердцевина в центре разряда. */
   .core-hot {
     position: absolute;
     left: 50%;
     top: 50%;
-    width: 34px;
-    height: 34px;
+    width: 26px;
+    height: 26px;
     transform: translate(-50%, -50%);
     border-radius: 50%;
-    background: radial-gradient(circle at 42% 38%, #fff 0%, #fff6e0 30%, #ffb347 70%, transparent 100%);
-    filter: blur(1px);
-    mix-blend-mode: screen;
-    animation: coreHotPulse 2.4s ease-in-out infinite;
+    background: radial-gradient(circle at 42% 38%, #fff 0%, var(--core-white-hot) 35%, var(--core-blue-bright) 68%, transparent 100%);
+    filter: blur(0.5px);
+    animation: coreHotPulse 1.8s ease-in-out infinite;
   }
   @keyframes coreHotPulse {
     0%, 100% { opacity: 0.85; }
@@ -618,8 +693,8 @@
     width: 60px;
     height: 60px;
     border-radius: 50%;
-    border: 2.5px solid #ffe6bf;
-    box-shadow: 0 0 12px 2px #ffb347cc;
+    border: 2.5px solid #cdeeff;
+    box-shadow: 0 0 12px 2px #6fd0ffcc;
     transform: translate(-50%, -50%) scale(1);
     opacity: 0;
     pointer-events: none;
@@ -653,13 +728,6 @@
     white-space: nowrap;
     text-align: center;
     pointer-events: none;
-  }
-
-  .map-hint {
-    text-align: center;
-    color: var(--text-dim);
-    font-size: 12px;
-    margin-top: 18px;
   }
 
   /* ── CRT-скан: лёгкая фоновая текстура на всю страницу ────────────── */
@@ -708,6 +776,143 @@
     100% { top: 100%; opacity: 0; }
   }
 
+  /* ── Досье агента — выезжающая справа панель (только для карты) ───── */
+
+  .dossier-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    background: rgba(4, 5, 7, 0.35);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  .dossier-overlay:not(.hidden) { opacity: 1; pointer-events: auto; }
+
+  .dossier {
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: 100%;
+    width: min(400px, 92vw);
+    background: var(--bg-panel);
+    border-left: 1px solid var(--border-strong);
+    box-shadow: -12px 0 40px rgba(0, 0, 0, 0.5);
+    z-index: 56;
+    padding: 22px;
+    overflow-y: auto;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+  }
+  .dossier.open { transform: translateX(0); }
+
+  .dossier-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+  }
+  .dossier-kicker {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--core-blue-bright);
+    text-transform: uppercase;
+  }
+  .dossier-time { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+  .dossier-close { font-size: 15px; padding: 5px 9px; }
+  .dossier-name { margin: 8px 0 16px; font-size: 21px; color: var(--text); }
+
+  .dossier-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .dossier-tab {
+    background: rgba(192, 192, 192, 0.06);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 8px;
+    text-align: center;
+  }
+  .d-tab-label {
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  .d-tab-value { font-size: 12px; font-weight: 600; color: var(--text); }
+
+  .dossier-eff { position: relative; width: 128px; height: 128px; margin: 6px auto 18px; }
+  .eff-ring { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .eff-track { fill: none; stroke: var(--border); stroke-width: 8; }
+  .eff-fill {
+    fill: none;
+    stroke: var(--core-blue-bright);
+    stroke-width: 8;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.5s ease;
+  }
+  .eff-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .eff-num { font-size: 19px; font-weight: 700; color: var(--text); }
+  .eff-label { font-size: 9px; letter-spacing: 0.08em; color: var(--text-dim); text-transform: uppercase; margin-top: 2px; }
+
+  .dossier-tiles {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin: 4px 0 6px;
+  }
+  .dossier-tile {
+    background: rgba(192, 192, 192, 0.06);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+  .tile-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+  }
+  .tile-value { font-size: 14px; font-weight: 700; color: var(--text); }
+
+  .dossier-section {
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin: 18px 0 8px;
+  }
+  .dossier-desc { font-size: 13px; line-height: 1.55; color: var(--text); margin: 0; }
+  .dossier-ideas { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.6; color: var(--text-dim); }
+  .dossier-ideas li { margin-bottom: 4px; }
+
+  .dossier-logs {
+    margin-top: 14px;
+    background: #121415;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    max-height: 200px;
+    overflow-y: auto;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+  .dossier-logs.hidden { display: none; }
+
+  .dossier-actions { display: flex; gap: 8px; margin-top: 20px; }
+  .dossier-actions button { flex: 1; font-size: 12px; padding: 9px 8px; }
+
   /* ── Mobile ─────────────────────────────────────────────────────── */
 
   @media (max-width: 640px) {
@@ -716,6 +921,10 @@
     header.top { flex-direction: column; }
     .top-actions { align-self: stretch; justify-content: space-between; }
     .map-container { max-width: 320px; }
+    .map-stats-panel { left: 16px; gap: 10px; }
+    .map-header { left: 16px; }
+    .map-clock { right: 16px; }
+    .dossier { width: 100vw; }
   }
 </style>
 </head>
@@ -794,20 +1003,52 @@
   </div>
 
   <div id="mapView" class="view hidden">
+    <div class="map-vignette" aria-hidden="true"></div>
+
+    <div class="map-header">
+      <h1>J.A.R.V.I.S <span class="sep">•</span> ВТОРОЙ МОЗГ</h1>
+      <p>Нейросеть агентов <span class="sep">•</span> живая карта</p>
+    </div>
+
+    <div class="map-clock">
+      <div class="map-clock-time" id="mapClockTime">--:--:--</div>
+      <div class="map-clock-date" id="mapClockDate">--.--.----</div>
+      <button class="ghost map-exit-btn" id="mapExitBtn" type="button">▦ Сетка</button>
+    </div>
+
+    <div class="map-stats-panel">
+      <div>
+        <div class="map-stat-label">Агентов всего</div>
+        <div class="map-stat-value" id="mapStatTotal">—</div>
+      </div>
+      <div>
+        <div class="map-stat-label">Активны сейчас</div>
+        <div class="map-stat-value" id="mapStatActive">—</div>
+      </div>
+      <div>
+        <div class="map-stat-label">Связей</div>
+        <div class="map-stat-value" id="mapStatLinks">—</div>
+      </div>
+      <div>
+        <div class="map-stat-label">Кластеров</div>
+        <div class="map-stat-value" id="mapStatClusters">—</div>
+      </div>
+    </div>
+
+    <div class="map-plane" id="mapPlane"></div>
+
     <div class="map-container" id="mapContainer">
       <svg class="map-lines" id="mapLines" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
       <div class="map-core-hit" id="mapCoreHit" tabindex="0" role="button" aria-label="Ядро JARVIS">
         <div class="map-core-wrap">
-          <div class="core-halo"></div>
-          <div class="core-blob b1"></div>
-          <div class="core-blob b2"></div>
-          <div class="core-blob b3"></div>
+          <svg class="core-svg" viewBox="0 0 100 100" aria-hidden="true">
+            <g class="core-ray-group" id="coreRayGroup"></g>
+          </svg>
           <div class="core-hot"></div>
         </div>
         <div class="core-shockwave" id="coreShockwave"></div>
       </div>
     </div>
-    <p class="map-hint">Ещё 20 агентов появятся на карте по мере подключения.</p>
   </div>
 </div>
 
@@ -836,6 +1077,66 @@
     </div>
   </div>
 </div>
+
+<div id="dossierOverlay" class="dossier-overlay hidden"></div>
+<aside id="agentDossier" class="dossier">
+  <div class="dossier-head">
+    <div>
+      <div class="dossier-kicker">Агент • досье</div>
+      <div class="dossier-time" id="dossierTime">—</div>
+    </div>
+    <button class="ghost dossier-close" id="dossierCloseBtn" aria-label="Закрыть">✕</button>
+  </div>
+
+  <h2 class="dossier-name" id="dossierName">—</h2>
+
+  <div class="dossier-tabs">
+    <div class="dossier-tab">
+      <div class="d-tab-label">Статус</div>
+      <div class="d-tab-value" id="dossierStatus">—</div>
+    </div>
+    <div class="dossier-tab">
+      <div class="d-tab-label">Категория</div>
+      <div class="d-tab-value" id="dossierCategory">—</div>
+    </div>
+    <div class="dossier-tab">
+      <div class="d-tab-label">След. запуск</div>
+      <div class="d-tab-value" id="dossierNextRun">—</div>
+    </div>
+  </div>
+
+  <div class="dossier-eff">
+    <svg class="eff-ring" viewBox="0 0 100 100">
+      <circle class="eff-track" cx="50" cy="50" r="44"></circle>
+      <circle class="eff-fill" id="dossierEffRing" cx="50" cy="50" r="44"></circle>
+    </svg>
+    <div class="eff-center">
+      <div class="eff-num" id="dossierEffNum">—/100</div>
+      <div class="eff-label">Эффективность</div>
+    </div>
+  </div>
+
+  <div class="dossier-tiles">
+    <div class="dossier-tile"><div class="tile-label">Запусков (в логе)</div><div class="tile-value" id="dossierRuns">—</div></div>
+    <div class="dossier-tile"><div class="tile-label">Последний</div><div class="tile-value" id="dossierLast">—</div></div>
+    <div class="dossier-tile"><div class="tile-label">В расписании</div><div class="tile-value" id="dossierScheduled">—</div></div>
+    <div class="dossier-tile"><div class="tile-label">Ошибки</div><div class="tile-value" id="dossierErrors">—</div></div>
+  </div>
+
+  <h3 class="dossier-section">Описание</h3>
+  <p class="dossier-desc" id="dossierDesc">—</p>
+
+  <h3 class="dossier-section">Идеи докрутки</h3>
+  <ul class="dossier-ideas" id="dossierIdeas"></ul>
+
+  <div class="dossier-logs hidden" id="dossierLogs"></div>
+
+  <div class="dossier-actions">
+    <button class="primary" id="dossierRunBtn">Запустить</button>
+    <button class="ghost" id="dossierLogsBtn">Логи</button>
+    <button class="ghost" id="dossierConfigBtn">Настроить</button>
+  </div>
+</aside>
 
 <div id="toast"></div>
 
@@ -868,6 +1169,88 @@
     'voice-pipeline': { angle: 30, radius: 36 },
   };
 
+  // Ручные "досье"-данные для подключённых агентов — то, чего нет в API
+  // (категория, ближайший запуск текстом, роль от первого лица, идеи
+  // докрутки). Живые поля (статус/lastRun/logs) всё равно берутся из
+  // ответа API и накладываются поверх при заполнении досье.
+  var REAL_AGENT_META = {
+    'chat-handler': {
+      category: 'Коммуникация',
+      nextRun: 'по событию',
+      pitch: 'Я читаю входящие сообщения в Telegram, поднимаю историю разговора из Supabase и отвечаю через Claude — стараюсь звучать как Рустам, а не как бот.',
+      ideas: [
+        'Разделить память по темам (Kwork / личное) вместо одной общей истории',
+        'Автоопределение языка ответа без явной команды',
+        'Тихий режим — не отвечать, если сообщение адресовано не мне',
+      ],
+    },
+    'kwork-monitor': {
+      category: 'Фриланс',
+      nextRun: 'непрерывно (IMAP IDLE)',
+      pitch: 'Я держу постоянное соединение с почтой по IMAP IDLE и, как только приходит письмо о новом заказе на Kwork, сразу собираю дайджест и отправляю его в Telegram.',
+      ideas: [
+        'Ранжировать заказы по вероятности отклика перед отправкой дайджеста',
+        'Черновик отклика одним нажатием прямо из уведомления',
+        'Отдельно выделять срочные заказы по бюджету',
+      ],
+    },
+    'voice-pipeline': {
+      category: 'Коммуникация',
+      nextRun: 'по событию',
+      pitch: 'Я забираю голосовое сообщение, прогоняю его через ffmpeg и Whisper на Groq, отдаю текст в Claude и, если нужно, отвечаю голосом обратно.',
+      ideas: [
+        'Кэшировать распознанные фразы, чтобы не гонять Whisper повторно',
+        'Резервный провайдер распознавания, если Groq вернёт 403',
+        'Показывать текст распознавания перед отправкой в Claude',
+      ],
+    },
+  };
+
+  // Декоративные "будущие" агенты — не подключены к бэкенду, существуют
+  // только на карте как звёзды-заготовки роадмапа (см. CLAUDE.md, раздел
+  // "Планы развития"). x/y — проценты полноэкранного полотна карты.
+  var DECORATIVE_AGENTS = [
+    { name: 'Юрист-советник', cluster: 'Фриланс', x: 12, y: 20,
+      pitch: 'Я буду проверять договоры и переписку с заказчиками на Kwork/FL.ru, чтобы Рустам не попадал на невыгодные условия.',
+      ideas: ['Шаблоны безопасных формулировок ТЗ', 'Проверка на признаки развода на бесплатную доработку'] },
+    { name: 'Разведка рынка', cluster: 'Фриланс', x: 88, y: 16,
+      pitch: 'Я буду следить за ценами и спросом конкурентов на похожие услуги, чтобы подсказывать, когда поднимать или снижать цену.',
+      ideas: ['Еженедельный срез цен по категории на Kwork', 'Сигнал о новом сильном конкуренте в нише'] },
+    { name: 'Ценообразование', cluster: 'Фриланс', x: 8, y: 62,
+      pitch: 'Я буду считать, сколько на самом деле стоит час работы Рустама с учётом комиссии Kwork и налога, и подсказывать цену за заказ.',
+      ideas: ['Калькулятор "цена → чистыми на руки"', 'Предупреждение о заниженном ценнике относительно рынка'] },
+    { name: 'Маркетолог', cluster: 'Фриланс', x: 30, y: 6,
+      pitch: 'Я буду собирать маркетинговые материалы и планы продвижения профиля на Kwork/FL.ru.',
+      ideas: ['Автогенерация текста портфолио под новую услугу', 'План продвижения на месяц по чек-листу kwork-fix-plan'] },
+    { name: 'Копирайтер', cluster: 'Контент', x: 92, y: 58,
+      pitch: 'Я буду писать и переписывать тексты откликов, портфолио и лендингов, когда Рустаму нужен быстрый черновик.',
+      ideas: ['Три варианта тона на выбор (деловой/дружелюбный/кратко)', 'Проверка текста на воду перед отправкой'] },
+    { name: 'SEO-аудит', cluster: 'Контент', x: 78, y: 90,
+      pitch: 'Я буду проверять сайты клиентов на базовые технические и SEO-проблемы и готовить короткий отчёт.',
+      ideas: ['Автоматический чек-лист Core Web Vitals', 'Готовый PDF-отчёт для клиента'] },
+    { name: 'Дизайнер', cluster: 'Контент', x: 20, y: 90,
+      pitch: 'Я буду собирать быстрые визуальные черновики — макеты, обложки, превью — до передачи в работу.',
+      ideas: ['Библиотека готовых стилей под частые заказы', 'Экспорт сразу в нужный для клиента формат'] },
+    { name: 'Трейдер', cluster: 'Финансы', x: 6, y: 40,
+      pitch: 'Я буду следить за сигналами crypto-signals и подсказывать, когда стоит обратить внимание на рынок.',
+      ideas: ['Единый дайджест сигналов раз в день вместо потока уведомлений', 'Бэктест сигнала перед тем как его показать'] },
+    { name: 'Бухгалтер', cluster: 'Финансы', x: 94, y: 34,
+      pitch: 'Я буду считать доход с Kwork/FL.ru по месяцам и напоминать про налоги самозанятого.',
+      ideas: ['Автоматический разбор поступлений по заказчикам', 'Напоминание об уплате налога до дедлайна'] },
+    { name: 'Страж системы', cluster: 'Инфраструктура', x: 50, y: 8,
+      pitch: 'Я буду следить за здоровьем самого jarvis-bot на Railway — падения, зависший polling, ошибки в логах.',
+      ideas: ['Автоперезапуск при повторных 409 от Telegram', 'Уведомление в Telegram при падении деплоя'] },
+    { name: 'Создатель сайтов', cluster: 'Инфраструктура', x: 55, y: 94,
+      pitch: 'Я буду быстро собирать посадочные страницы под новые предложения на Kwork, вроде ochag-landing.',
+      ideas: ['Готовые блоки на основе DESIGN.md токенов', 'Чек-лист перед публикацией страницы'] },
+  ];
+
+  function computeClusterCount() {
+    var seen = {};
+    DECORATIVE_AGENTS.forEach(function (a) { seen[a.cluster] = true; });
+    return Object.keys(seen).length;
+  }
+
   var state = {
     token: localStorage.getItem(TOKEN_KEY) || '',
     agents: [],
@@ -892,6 +1275,7 @@
     mapContainer: document.getElementById('mapContainer'),
     mapLines: document.getElementById('mapLines'),
     mapCoreHit: document.getElementById('mapCoreHit'),
+    coreRayGroup: document.getElementById('coreRayGroup'),
     coreShockwave: document.getElementById('coreShockwave'),
     tabButtons: Array.prototype.slice.call(document.querySelectorAll('.tab-btn')),
     modal: document.getElementById('agentModal'),
@@ -907,6 +1291,34 @@
     modalCloseBtn: document.getElementById('modalCloseBtn'),
     modalRunBtn: document.getElementById('modalRunBtn'),
     toast: document.getElementById('toast'),
+    mapClockTime: document.getElementById('mapClockTime'),
+    mapClockDate: document.getElementById('mapClockDate'),
+    mapExitBtn: document.getElementById('mapExitBtn'),
+    mapStatTotal: document.getElementById('mapStatTotal'),
+    mapStatActive: document.getElementById('mapStatActive'),
+    mapStatLinks: document.getElementById('mapStatLinks'),
+    mapStatClusters: document.getElementById('mapStatClusters'),
+    mapPlane: document.getElementById('mapPlane'),
+    dossierOverlay: document.getElementById('dossierOverlay'),
+    dossier: document.getElementById('agentDossier'),
+    dossierTime: document.getElementById('dossierTime'),
+    dossierCloseBtn: document.getElementById('dossierCloseBtn'),
+    dossierName: document.getElementById('dossierName'),
+    dossierStatus: document.getElementById('dossierStatus'),
+    dossierCategory: document.getElementById('dossierCategory'),
+    dossierNextRun: document.getElementById('dossierNextRun'),
+    dossierEffRing: document.getElementById('dossierEffRing'),
+    dossierEffNum: document.getElementById('dossierEffNum'),
+    dossierRuns: document.getElementById('dossierRuns'),
+    dossierLast: document.getElementById('dossierLast'),
+    dossierScheduled: document.getElementById('dossierScheduled'),
+    dossierErrors: document.getElementById('dossierErrors'),
+    dossierDesc: document.getElementById('dossierDesc'),
+    dossierIdeas: document.getElementById('dossierIdeas'),
+    dossierLogs: document.getElementById('dossierLogs'),
+    dossierRunBtn: document.getElementById('dossierRunBtn'),
+    dossierLogsBtn: document.getElementById('dossierLogsBtn'),
+    dossierConfigBtn: document.getElementById('dossierConfigBtn'),
   };
 
   // ── Helpers ──────────────────────────────────────────────────────
@@ -964,6 +1376,8 @@
   function handleUnauthorized() {
     stopAutoRefresh();
     stopBoltRegen();
+    stopCoreLightningRegen();
+    stopMapClock();
     localStorage.removeItem(TOKEN_KEY);
     state.token = '';
     el.dashboard.style.display = 'none';
@@ -1002,6 +1416,8 @@
   el.signOutBtn.addEventListener('click', function () {
     stopAutoRefresh();
     stopBoltRegen();
+    stopCoreLightningRegen();
+    stopMapClock();
     localStorage.removeItem(TOKEN_KEY);
     state.token = '';
     el.tokenInput.value = '';
@@ -1110,7 +1526,10 @@
     el.tabButtons.forEach(function (btn) {
       btn.classList.toggle('active', btn.dataset.view === view);
     });
+    if (view === 'map') { startMapClock(); } else { stopMapClock(); }
   }
+
+  el.mapExitBtn.addEventListener('click', function () { switchView('grid'); });
 
   // ── Map view: ядро + агенты вокруг ────────────────────────────────
 
@@ -1158,6 +1577,123 @@
     if (boltRegenTimer) { clearInterval(boltRegenTimer); boltRegenTimer = null; }
   }
 
+  // ── Ядро: шар из ветвящихся электрических разрядов ──────────────────
+  // Форма самого шара нигде не рисуется отдельно — рваный "корпус" ниже
+  // это залитый полигон, чьи вершины совпадают с точками, через которые
+  // проходят яркие трещины-разряды, поэтому силуэт целиком порождается
+  // самими разрядами.
+
+  var CORE_CX = 50, CORE_CY = 50;
+
+  function buildCoreRay(angleDeg, maxLen) {
+    var segments = 4 + Math.floor(Math.random() * 3); // 4..6
+    var len = maxLen * (0.55 + Math.random() * 0.45);
+    var rad = (angleDeg * Math.PI) / 180;
+    var dx = Math.cos(rad), dy = Math.sin(rad);
+    var nx = -dy, ny = dx;
+    var pts = [[CORE_CX, CORE_CY]];
+    for (var i = 1; i < segments; i++) {
+      var t = i / segments;
+      var dist = len * t;
+      var jitter = (Math.random() - 0.5) * len * 0.24 * (1 - t * 0.4);
+      pts.push([CORE_CX + dx * dist + nx * jitter, CORE_CY + dy * dist + ny * jitter]);
+    }
+    pts.push([CORE_CX + dx * len, CORE_CY + dy * len]);
+    return pts;
+  }
+
+  function buildCoreBranch(fromPt, angleDeg, len) {
+    var segments = 2 + Math.floor(Math.random() * 2);
+    var rad = (angleDeg * Math.PI) / 180;
+    var dx = Math.cos(rad), dy = Math.sin(rad);
+    var nx = -dy, ny = dx;
+    var pts = [fromPt];
+    for (var i = 1; i <= segments; i++) {
+      var t = i / segments;
+      var dist = len * t;
+      var jitter = (Math.random() - 0.5) * len * 0.3;
+      pts.push([fromPt[0] + dx * dist + nx * jitter, fromPt[1] + dy * dist + ny * jitter]);
+    }
+    return pts;
+  }
+
+  function renderCoreSegments(g, pts, w0, w1, o0, o1, colorNear, colorFar) {
+    for (var i = 1; i < pts.length; i++) {
+      var t1 = i / (pts.length - 1);
+      var line = document.createElementNS(SVG_NS, 'line');
+      line.setAttribute('x1', pts[i - 1][0].toFixed(2));
+      line.setAttribute('y1', pts[i - 1][1].toFixed(2));
+      line.setAttribute('x2', pts[i][0].toFixed(2));
+      line.setAttribute('y2', pts[i][1].toFixed(2));
+      line.setAttribute('class', 'core-ray');
+      line.setAttribute('stroke-width', (w0 + (w1 - w0) * t1).toFixed(2));
+      line.setAttribute('opacity', (o0 + (o1 - o0) * t1).toFixed(2));
+      line.setAttribute('stroke', t1 < 0.35 ? colorNear : colorFar);
+      g.appendChild(line);
+    }
+  }
+
+  function renderCoreLightning() {
+    var g = el.coreRayGroup;
+    if (!g) return;
+    g.innerHTML = '';
+    var rayCount = 18 + Math.floor(Math.random() * 5); // 18..22
+    var maxLen = 38;
+    var ringR = 15; // радиус рваного "корпуса" шара, до которого разряды формируют полигон
+
+    var angles = [];
+    for (var i = 0; i < rayCount; i++) {
+      angles.push((360 / rayCount) * i + (Math.random() - 0.5) * (360 / rayCount) * 0.7);
+    }
+    angles.sort(function (a, b) { return a - b; });
+
+    var ringPts = angles.map(function (angle) {
+      var rad = (angle * Math.PI) / 180;
+      var r = ringR * (0.72 + Math.random() * 0.56);
+      return [CORE_CX + Math.cos(rad) * r, CORE_CY + Math.sin(rad) * r];
+    });
+
+    var poly = document.createElementNS(SVG_NS, 'polygon');
+    poly.setAttribute('points', ringPts.map(function (p) { return p[0].toFixed(2) + ',' + p[1].toFixed(2); }).join(' '));
+    poly.setAttribute('fill', 'var(--core-blue-deep)');
+    poly.setAttribute('opacity', '0.5');
+    g.appendChild(poly);
+
+    var innerPts = ringPts.map(function (p) {
+      return [CORE_CX + (p[0] - CORE_CX) * 0.55, CORE_CY + (p[1] - CORE_CY) * 0.55];
+    });
+    var poly2 = document.createElementNS(SVG_NS, 'polygon');
+    poly2.setAttribute('points', innerPts.map(function (p) { return p[0].toFixed(2) + ',' + p[1].toFixed(2); }).join(' '));
+    poly2.setAttribute('fill', 'var(--core-white-hot)');
+    poly2.setAttribute('opacity', '0.75');
+    g.appendChild(poly2);
+
+    angles.forEach(function (angle) {
+      var pts = buildCoreRay(angle, maxLen);
+      renderCoreSegments(g, pts, 2.1, 0.25, 0.95, 0.1, 'var(--core-white-hot)', 'var(--core-blue)');
+      if (Math.random() < 0.4 && pts.length > 2) {
+        var forkIdx = 1 + Math.floor(Math.random() * (pts.length - 2));
+        var branchAngle = angle + (Math.random() < 0.5 ? -1 : 1) * (24 + Math.random() * 20);
+        var remaining = maxLen * (1 - forkIdx / (pts.length - 1)) * 0.6;
+        var branchPts = buildCoreBranch(pts[forkIdx], branchAngle, remaining);
+        renderCoreSegments(g, branchPts, 1.2, 0.18, 0.8, 0.08, 'var(--core-blue-bright)', 'var(--core-blue-deep)');
+      }
+    });
+  }
+
+  var coreLightningTimer = null;
+  function startCoreLightningRegen() {
+    stopCoreLightningRegen();
+    renderCoreLightning();
+    coreLightningTimer = setInterval(function () {
+      if (el.mapView.classList.contains('hidden')) return;
+      renderCoreLightning();
+    }, 1400);
+  }
+  function stopCoreLightningRegen() {
+    if (coreLightningTimer) { clearInterval(coreLightningTimer); coreLightningTimer = null; }
+  }
+
   function renderMap(agents) {
     // Существующие DOM-узлы карты (кроме ядра и SVG) — точки и подписи.
     Array.prototype.slice.call(el.mapContainer.querySelectorAll('.map-node, .map-label')).forEach(function (n) {
@@ -1189,10 +1725,10 @@
       node.title = agent.name + ' — ' + statusLabel(agent.status);
       node.tabIndex = 0;
       node.setAttribute('role', 'button');
-      node.setAttribute('aria-label', agent.name);
-      node.addEventListener('click', function () { openAgentDetail(agent.id); });
+      node.setAttribute('aria-label', 'Агент «' + agent.name + '»');
+      node.addEventListener('click', function () { openDossier({ real: true, id: agent.id }); });
       node.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') openAgentDetail(agent.id);
+        if (e.key === 'Enter') openDossier({ real: true, id: agent.id });
       });
       el.mapContainer.appendChild(node);
 
@@ -1200,9 +1736,62 @@
       label.className = 'map-label';
       label.style.left = x + '%';
       label.style.top = 'calc(' + y + '% + 12px)';
-      label.textContent = agent.name;
+      label.textContent = 'Агент «' + agent.name + '»';
       el.mapContainer.appendChild(label);
     });
+
+    renderMapStats(agents);
+  }
+
+  // Звёздное поле декоративных (пока не подключённых) агентов — рисуется
+  // один раз при загрузке, без связи с ядром и без обновления по таймеру.
+  function renderDecorativeStars() {
+    el.mapPlane.innerHTML = '';
+    DECORATIVE_AGENTS.forEach(function (agent) {
+      var star = document.createElement('div');
+      star.className = 'map-star idle';
+      star.style.left = agent.x + '%';
+      star.style.top = agent.y + '%';
+      star.tabIndex = 0;
+      star.setAttribute('role', 'button');
+      star.setAttribute('aria-label', 'Агент «' + agent.name + '»');
+      star.addEventListener('click', function () { openDossier({ real: false, data: agent }); });
+      star.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') openDossier({ real: false, data: agent });
+      });
+      el.mapPlane.appendChild(star);
+
+      var label = document.createElement('div');
+      label.className = 'map-star-label';
+      label.style.left = agent.x + '%';
+      label.style.top = 'calc(' + agent.y + '% + 9px)';
+      label.textContent = 'Агент «' + agent.name + '»';
+      el.mapPlane.appendChild(label);
+    });
+  }
+
+  function renderMapStats(agents) {
+    el.mapStatTotal.textContent = agents.length + DECORATIVE_AGENTS.length;
+    el.mapStatActive.textContent = agents.filter(function (a) { return a.status === 'active'; }).length;
+    el.mapStatLinks.textContent = agents.length;
+    el.mapStatClusters.textContent = computeClusterCount();
+  }
+
+  // ── Часы на карте ────────────────────────────────────────────────
+
+  var mapClockTimer = null;
+  function tickMapClock() {
+    var now = new Date();
+    el.mapClockTime.textContent = now.toLocaleTimeString('ru-RU');
+    el.mapClockDate.textContent = now.toLocaleDateString('ru-RU');
+  }
+  function startMapClock() {
+    stopMapClock();
+    tickMapClock();
+    mapClockTimer = setInterval(tickMapClock, 1000);
+  }
+  function stopMapClock() {
+    if (mapClockTimer) { clearInterval(mapClockTimer); mapClockTimer = null; }
   }
 
   function escapeHtml(str) {
@@ -1211,12 +1800,12 @@
     return d.innerHTML;
   }
 
-  function renderLogs(logs) {
+  function renderLogsInto(container, logs) {
     if (!logs || !logs.length) {
-      el.modalLogs.innerHTML = '<div class="empty">Логов пока нет</div>';
+      container.innerHTML = '<div class="empty">Логов пока нет</div>';
       return;
     }
-    el.modalLogs.innerHTML = '';
+    container.innerHTML = '';
     logs.slice().reverse().forEach(function (entry) {
       var line = document.createElement('div');
       line.className = 'log-line ' + (entry.level || 'info');
@@ -1228,9 +1817,11 @@
       m.textContent = entry.message;
       line.appendChild(t);
       line.appendChild(m);
-      el.modalLogs.appendChild(line);
+      container.appendChild(line);
     });
   }
+
+  function renderLogs(logs) { renderLogsInto(el.modalLogs, logs); }
 
   // ── Agent detail modal ───────────────────────────────────────────
 
@@ -1275,7 +1866,9 @@
     if (e.target === el.modalOverlay) closeModal();
   });
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') closeModal();
+    if (e.key !== 'Escape') return;
+    closeModal();
+    closeDossier();
   });
 
   function closeModal() {
@@ -1287,6 +1880,136 @@
     if (currentModalAgentId) runAgent(currentModalAgentId, el.modalRunBtn);
   });
 
+  // ── Agent dossier (карта: клик по узлу/звезде) ────────────────────
+  // Досье — отдельная выезжающая справа панель, используется только для
+  // карты; карточки вида "Сетка" по-прежнему открывают старую модалку
+  // (openAgentDetail) без изменений.
+
+  var currentDossierAgentId = null;
+
+  function openDossier(target) {
+    el.dossierOverlay.classList.remove('hidden');
+    el.dossier.classList.add('open');
+    el.dossierLogs.classList.add('hidden');
+    el.dossierLogs.innerHTML = '';
+    if (target.real) {
+      fillDossierLoading(target.id);
+      api('/api/agents/' + encodeURIComponent(target.id)).then(function (agent) {
+        fillDossierReal(agent);
+      }).catch(function (err) {
+        if (err.message !== 'unauthorized') showToast('Не удалось загрузить агента: ' + err.message);
+      });
+    } else {
+      fillDossierDecorative(target.data);
+    }
+  }
+
+  function fillDossierLoading(id) {
+    currentDossierAgentId = id;
+    el.dossierName.textContent = 'Загрузка...';
+    el.dossierTime.textContent = fmtDate(new Date().toISOString());
+    el.dossierStatus.textContent = '—';
+    el.dossierCategory.textContent = '—';
+    el.dossierNextRun.textContent = '—';
+    setEfficiencyRing(0);
+    el.dossierRuns.textContent = '—';
+    el.dossierLast.textContent = '—';
+    el.dossierScheduled.textContent = '—';
+    el.dossierErrors.textContent = '—';
+    el.dossierDesc.textContent = '';
+    el.dossierIdeas.innerHTML = '';
+  }
+
+  // Эффективность не приходит из API как метрика — это простая эвристика
+  // по статусу/наличию последней ошибки, а не отслеживаемый бэкендом
+  // показатель.
+  function computeEfficiency(agent) {
+    if (agent.lastError) return 42;
+    return agent.status === 'active' ? 97 : 88;
+  }
+
+  function setEfficiencyRing(pct) {
+    var circumference = 2 * Math.PI * 44;
+    var offset = circumference * (1 - pct / 100);
+    el.dossierEffRing.style.strokeDasharray = circumference.toFixed(1);
+    el.dossierEffRing.style.strokeDashoffset = offset.toFixed(1);
+    el.dossierEffNum.textContent = pct + '/100';
+  }
+
+  function fillDossierIdeas(ideas) {
+    el.dossierIdeas.innerHTML = '';
+    (ideas || []).forEach(function (idea) {
+      var li = document.createElement('li');
+      li.textContent = idea;
+      el.dossierIdeas.appendChild(li);
+    });
+  }
+
+  function fillDossierReal(agent) {
+    currentDossierAgentId = agent.id;
+    var meta = REAL_AGENT_META[agent.id] || {};
+    el.dossierName.textContent = agent.name;
+    el.dossierTime.textContent = fmtDate(new Date().toISOString());
+    el.dossierStatus.textContent = statusLabel(agent.status);
+    el.dossierCategory.textContent = meta.category || '—';
+    el.dossierNextRun.textContent = meta.nextRun || (agent.schedule || 'по событию');
+
+    setEfficiencyRing(computeEfficiency(agent));
+
+    el.dossierRuns.textContent = String((agent.logs || []).length);
+    el.dossierLast.textContent = fmtDate(agent.lastRun);
+    el.dossierScheduled.textContent = agent.schedule ? 'Да' : 'Нет';
+    el.dossierErrors.textContent = agent.lastError ? 'Есть' : 'Нет';
+
+    el.dossierDesc.textContent = meta.pitch || agent.description;
+    fillDossierIdeas(meta.ideas);
+
+    el.dossierRunBtn.disabled = !agent.runnable;
+    el.dossierRunBtn.textContent = agent.runnable ? 'Запустить' : 'Только по событию';
+    el.dossierRunBtn.onclick = function () { runAgent(agent.id, el.dossierRunBtn); };
+    el.dossierLogsBtn.onclick = function () { toggleDossierLogs(agent.logs); };
+    el.dossierConfigBtn.onclick = function () { showToast('Настройки агента пока не реализованы'); };
+  }
+
+  function fillDossierDecorative(data) {
+    currentDossierAgentId = null;
+    el.dossierName.textContent = data.name;
+    el.dossierTime.textContent = fmtDate(new Date().toISOString());
+    el.dossierStatus.textContent = 'Ожидание';
+    el.dossierCategory.textContent = data.cluster;
+    el.dossierNextRun.textContent = 'не подключён';
+
+    setEfficiencyRing(0);
+    el.dossierRuns.textContent = '—';
+    el.dossierLast.textContent = '—';
+    el.dossierScheduled.textContent = 'Нет';
+    el.dossierErrors.textContent = '—';
+
+    el.dossierDesc.textContent = data.pitch;
+    fillDossierIdeas(data.ideas);
+
+    el.dossierRunBtn.disabled = true;
+    el.dossierRunBtn.textContent = 'Запустить';
+    el.dossierRunBtn.onclick = function () { showToast('Агент ещё не подключён'); };
+    el.dossierLogsBtn.onclick = function () { showToast('Логов пока нет — агент не подключён'); };
+    el.dossierConfigBtn.onclick = function () { showToast('Настройки появятся после подключения агента'); };
+  }
+
+  function toggleDossierLogs(logs) {
+    var wasHidden = el.dossierLogs.classList.contains('hidden');
+    if (wasHidden) renderLogsInto(el.dossierLogs, logs);
+    el.dossierLogs.classList.toggle('hidden', !wasHidden);
+  }
+
+  el.dossierCloseBtn.addEventListener('click', closeDossier);
+  el.dossierOverlay.addEventListener('click', closeDossier);
+
+  function closeDossier() {
+    el.dossier.classList.remove('open');
+    el.dossierOverlay.classList.add('hidden');
+    currentDossierAgentId = null;
+  }
+
   // ── Actions ──────────────────────────────────────────────────────
 
   async function runAgent(id, triggerBtn) {
@@ -1297,6 +2020,7 @@
       showToast((result && result.ok) ? 'Агент ' + id + ' запущен' : 'Готово');
       await refreshAll();
       if (currentModalAgentId === id) openAgentDetail(id);
+      if (currentDossierAgentId === id) openDossier({ real: true, id: id });
     } catch (err) {
       if (err.message !== 'unauthorized') showToast('Ошибка запуска: ' + err.message);
     } finally {
@@ -1354,9 +2078,11 @@
 
   async function bootstrap() {
     showDashboard();
+    renderDecorativeStars();
     await refreshAll();
     startAutoRefresh();
     startBoltRegen();
+    startCoreLightningRegen();
   }
 
   if (state.token) {
