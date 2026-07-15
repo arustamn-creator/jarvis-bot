@@ -1,5 +1,11 @@
 # Dashboard API
 
+Веб-интерфейс: `GET /dashboard` (например
+`https://jarvis-bot-production-90c2.up.railway.app/dashboard`) — статическая
+страница `public/dashboard.html`, отдаётся тем же Express-инстансом, что и
+API ниже. При первом открытии страница спрашивает `DASHBOARD_API_TOKEN` и
+сохраняет его в `localStorage` браузера.
+
 HTTP API для внешнего дашборда мониторинга (веб + мобильный PWA). Роуты
 `/api/system` и `/api/agents*` смонтированы на тот же Express-инстанс и тот
 же порт (`PORT`, задаёт сама Railway), что уже слушает существующий HTTP API

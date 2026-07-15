@@ -1,0 +1,828 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>JARVIS // Control Center</title>
+<style>
+  :root {
+    --bg: #06060d;
+    --bg-panel: #0d0d1b;
+    --bg-panel-2: #12122250;
+    --border: #23233f;
+    --text: #e9e9f7;
+    --text-dim: #8b8bb0;
+    --pink: #ff2f92;
+    --purple: #9a5cff;
+    --cyan: #22e6ff;
+    --danger: #ff3b6b;
+    --radius: 14px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    min-height: 100vh;
+  }
+
+  body {
+    background:
+      radial-gradient(60vw 60vw at 85% -10%, #ff2f9214 0%, transparent 60%),
+      radial-gradient(60vw 60vw at -10% 10%, #22e6ff14 0%, transparent 55%),
+      var(--bg);
+  }
+
+  .mono { font-family: 'Consolas', 'SFMono-Regular', Menlo, monospace; }
+
+  /* ── Layout ─────────────────────────────────────────────────────── */
+
+  .wrap {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: clamp(16px, 4vw, 36px);
+  }
+
+  header.top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+  }
+
+  .brand h1 {
+    margin: 0;
+    font-size: clamp(20px, 4vw, 30px);
+    letter-spacing: 0.06em;
+    font-weight: 800;
+    background: linear-gradient(90deg, var(--cyan), var(--purple) 55%, var(--pink));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .brand p {
+    margin: 4px 0 0;
+    color: var(--text-dim);
+    font-size: 13px;
+    letter-spacing: 0.04em;
+  }
+
+  .top-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  button {
+    font: inherit;
+    cursor: pointer;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-panel);
+    color: var(--text);
+    padding: 9px 14px;
+    transition: border-color .15s, box-shadow .15s, transform .05s;
+  }
+  button:hover { border-color: var(--cyan); box-shadow: 0 0 12px #22e6ff33; }
+  button:active { transform: scale(0.98); }
+  button:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+
+  button.ghost {
+    background: transparent;
+    color: var(--text-dim);
+    border-color: transparent;
+    padding: 9px 10px;
+  }
+  button.ghost:hover { color: var(--text); border-color: var(--border); box-shadow: none; }
+
+  button.primary {
+    border-color: var(--purple);
+    background: linear-gradient(135deg, #9a5cff26, #22e6ff1a);
+  }
+  button.primary:hover { box-shadow: 0 0 16px #9a5cff55; }
+
+  /* ── Stat tiles ─────────────────────────────────────────────────── */
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+
+  .stat {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, var(--cyan), transparent 40%, var(--pink) 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0.35;
+    pointer-events: none;
+  }
+  .stat .label {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+  .stat .value {
+    font-size: clamp(18px, 3vw, 26px);
+    font-weight: 700;
+  }
+  .stat.cyan .value { color: var(--cyan); text-shadow: 0 0 14px #22e6ff55; }
+  .stat.purple .value { color: var(--purple); text-shadow: 0 0 14px #9a5cff55; }
+  .stat.pink .value { color: var(--pink); text-shadow: 0 0 14px #ff2f9255; }
+
+  /* ── Agent cards ────────────────────────────────────────────────── */
+
+  h2.section {
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin: 0 0 12px;
+  }
+
+  .agents-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 14px;
+  }
+
+  .card {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    cursor: pointer;
+    transition: border-color .15s, box-shadow .15s, transform .1s;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .card:hover {
+    transform: translateY(-2px);
+    border-color: var(--purple);
+    box-shadow: 0 0 22px #9a5cff2e;
+  }
+
+  .card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .card-head .name {
+    font-weight: 700;
+    font-size: 16px;
+  }
+  .card-head .id {
+    color: var(--text-dim);
+    font-size: 11px;
+  }
+
+  .badge {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 4px 9px;
+    border-radius: 999px;
+    white-space: nowrap;
+    border: 1px solid transparent;
+  }
+  .badge.active { color: var(--cyan); border-color: var(--cyan); box-shadow: 0 0 10px #22e6ff44 inset; }
+  .badge.idle { color: var(--purple); border-color: var(--purple); box-shadow: 0 0 10px #9a5cff33 inset; }
+  .badge.error { color: var(--danger); border-color: var(--danger); box-shadow: 0 0 10px #ff3b6b44 inset; animation: pulse 1.4s infinite; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
+  }
+
+  .card .desc {
+    color: var(--text-dim);
+    font-size: 13px;
+    line-height: 1.45;
+    flex-grow: 1;
+  }
+
+  .card .meta {
+    font-size: 12px;
+    color: var(--text-dim);
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .card .meta strong { color: var(--text); font-weight: 600; }
+
+  .card .card-actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+  .card .card-actions button {
+    font-size: 12px;
+    padding: 7px 12px;
+  }
+
+  /* ── Modal ──────────────────────────────────────────────────────── */
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: #020208cc;
+    backdrop-filter: blur(3px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    z-index: 50;
+  }
+  .overlay.hidden { display: none; }
+
+  .modal {
+    width: 100%;
+    max-width: 560px;
+    max-height: 86vh;
+    overflow-y: auto;
+    background: var(--bg-panel);
+    border: 1px solid var(--purple);
+    box-shadow: 0 0 40px #9a5cff33;
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+
+  .modal-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .modal-head h3 { margin: 0 0 4px; font-size: 18px; }
+  .modal-head .id { color: var(--text-dim); font-size: 12px; }
+
+  .modal .row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+  }
+  .modal .row span:first-child { color: var(--text-dim); }
+  .modal .row span:last-child { text-align: right; }
+
+  .logs {
+    margin-top: 14px;
+    background: #05050c;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    max-height: 260px;
+    overflow-y: auto;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+  .logs .log-line { display: flex; gap: 8px; }
+  .logs .log-line .t { color: var(--text-dim); flex-shrink: 0; }
+  .logs .log-line.info .m { color: var(--text); }
+  .logs .log-line.error .m { color: var(--danger); }
+  .logs .log-line.warn .m { color: var(--cyan); }
+  .logs .empty { color: var(--text-dim); }
+
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 16px;
+  }
+
+  /* ── Token gate ─────────────────────────────────────────────────── */
+
+  .gate-box {
+    width: 100%;
+    max-width: 380px;
+    background: var(--bg-panel);
+    border: 1px solid var(--cyan);
+    box-shadow: 0 0 40px #22e6ff33;
+    border-radius: var(--radius);
+    padding: 24px;
+    text-align: center;
+  }
+  .gate-box h2 {
+    margin: 0 0 6px;
+    background: linear-gradient(90deg, var(--cyan), var(--pink));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    letter-spacing: 0.04em;
+  }
+  .gate-box p { color: var(--text-dim); font-size: 13px; margin: 0 0 18px; }
+  .gate-box input {
+    width: 100%;
+    padding: 11px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: #05050c;
+    color: var(--text);
+    font: inherit;
+    margin-bottom: 12px;
+  }
+  .gate-box input:focus { outline: none; border-color: var(--purple); box-shadow: 0 0 10px #9a5cff44; }
+  .gate-box button { width: 100%; }
+  .gate-error { color: var(--danger); font-size: 12px; min-height: 16px; margin-top: 10px; }
+
+  /* ── Toast ──────────────────────────────────────────────────────── */
+
+  #toast {
+    position: fixed;
+    bottom: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-panel);
+    border: 1px solid var(--danger);
+    box-shadow: 0 0 20px #ff3b6b44;
+    color: var(--text);
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s;
+  }
+  #toast.show { opacity: 1; }
+
+  .empty-state {
+    color: var(--text-dim);
+    font-size: 13px;
+    padding: 20px 0;
+  }
+
+  /* ── Mobile ─────────────────────────────────────────────────────── */
+
+  @media (max-width: 640px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .agents-grid { grid-template-columns: 1fr; }
+    header.top { flex-direction: column; }
+    .top-actions { align-self: stretch; justify-content: space-between; }
+  }
+</style>
+</head>
+<body>
+
+<div id="tokenGate" class="overlay hidden">
+  <div class="gate-box">
+    <h2>JARVIS // ACCESS</h2>
+    <p>Введите Bearer-токен дашборда (DASHBOARD_API_TOKEN). Он сохранится в этом браузере.</p>
+    <input id="tokenInput" type="password" placeholder="Токен доступа" autocomplete="off" />
+    <button class="primary" id="tokenSubmit">Подключиться</button>
+    <div class="gate-error" id="tokenError"></div>
+  </div>
+</div>
+
+<div class="wrap" id="dashboard" style="display:none">
+  <header class="top">
+    <div class="brand">
+      <h1>JARVIS // CONTROL CENTER</h1>
+      <p>Мониторинг агентов jarvis-bot в реальном времени</p>
+    </div>
+    <div class="top-actions">
+      <button class="ghost" id="refreshBtn" title="Обновить">⟳ Обновить</button>
+      <button class="ghost" id="signOutBtn" title="Забыть токен">Выйти</button>
+    </div>
+  </header>
+
+  <div class="stats">
+    <div class="stat cyan">
+      <div class="label">Агентов всего</div>
+      <div class="value" id="statTotal">—</div>
+    </div>
+    <div class="stat purple">
+      <div class="label">Активны</div>
+      <div class="value" id="statActive">—</div>
+    </div>
+    <div class="stat pink">
+      <div class="label">Аптайм</div>
+      <div class="value" id="statUptime">—</div>
+    </div>
+    <div class="stat">
+      <div class="label">Время сервера</div>
+      <div class="value mono" id="statTime" style="font-size:14px">—</div>
+    </div>
+  </div>
+
+  <h2 class="section">Агенты</h2>
+  <div class="agents-grid" id="agentsGrid">
+    <div class="empty-state">Загрузка...</div>
+  </div>
+</div>
+
+<div id="agentModalOverlay" class="overlay hidden">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <h3 id="modalName">—</h3>
+        <div class="id mono" id="modalId">—</div>
+      </div>
+      <span class="badge" id="modalStatus">—</span>
+    </div>
+    <p class="desc" id="modalDesc" style="color:var(--text-dim); font-size:13px; line-height:1.5;"></p>
+    <div class="row"><span>Расписание</span><span id="modalSchedule">—</span></div>
+    <div class="row"><span>Последний запуск</span><span id="modalLastRun">—</span></div>
+    <div class="row"><span>Последняя ошибка</span><span id="modalLastError">—</span></div>
+
+    <div class="logs" id="modalLogs">
+      <div class="empty">Логов пока нет</div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="ghost" id="modalCloseBtn">Закрыть</button>
+      <button class="primary" id="modalRunBtn">Запустить вручную</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  // Дашборд всегда ходит в прод-инстанс jarvis-bot, независимо от того,
+  // с какого домена/устройства открыта сама эта страница.
+  var API_BASE = 'https://jarvis-bot-production-90c2.up.railway.app';
+  var TOKEN_KEY = 'jarvis_dashboard_token';
+  var REFRESH_MS = 20000;
+
+  var state = {
+    token: localStorage.getItem(TOKEN_KEY) || '',
+    agents: [],
+    refreshTimer: null,
+  };
+
+  var el = {
+    tokenGate: document.getElementById('tokenGate'),
+    tokenInput: document.getElementById('tokenInput'),
+    tokenSubmit: document.getElementById('tokenSubmit'),
+    tokenError: document.getElementById('tokenError'),
+    dashboard: document.getElementById('dashboard'),
+    refreshBtn: document.getElementById('refreshBtn'),
+    signOutBtn: document.getElementById('signOutBtn'),
+    statTotal: document.getElementById('statTotal'),
+    statActive: document.getElementById('statActive'),
+    statUptime: document.getElementById('statUptime'),
+    statTime: document.getElementById('statTime'),
+    agentsGrid: document.getElementById('agentsGrid'),
+    modalOverlay: document.getElementById('agentModalOverlay'),
+    modalName: document.getElementById('modalName'),
+    modalId: document.getElementById('modalId'),
+    modalStatus: document.getElementById('modalStatus'),
+    modalDesc: document.getElementById('modalDesc'),
+    modalSchedule: document.getElementById('modalSchedule'),
+    modalLastRun: document.getElementById('modalLastRun'),
+    modalLastError: document.getElementById('modalLastError'),
+    modalLogs: document.getElementById('modalLogs'),
+    modalCloseBtn: document.getElementById('modalCloseBtn'),
+    modalRunBtn: document.getElementById('modalRunBtn'),
+    toast: document.getElementById('toast'),
+  };
+
+  // ── Helpers ──────────────────────────────────────────────────────
+
+  function showToast(msg) {
+    el.toast.textContent = msg;
+    el.toast.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(function () { el.toast.classList.remove('show'); }, 3500);
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return '—';
+    try { return new Date(iso).toLocaleString('ru-RU'); } catch (e) { return iso; }
+  }
+
+  function fmtUptime(sec) {
+    if (typeof sec !== 'number') return '—';
+    var d = Math.floor(sec / 86400);
+    var h = Math.floor((sec % 86400) / 3600);
+    var m = Math.floor((sec % 3600) / 60);
+    var s = Math.floor(sec % 60);
+    var parts = [];
+    if (d) parts.push(d + 'д');
+    if (h || d) parts.push(h + 'ч');
+    if (m || h || d) parts.push(m + 'м');
+    parts.push(s + 'с');
+    return parts.join(' ');
+  }
+
+  function statusLabel(status) {
+    return { active: 'Активен', idle: 'Ожидание', error: 'Ошибка' }[status] || status;
+  }
+
+  async function api(path, opts) {
+    opts = opts || {};
+    var res = await fetch(API_BASE + path, {
+      method: opts.method || 'GET',
+      headers: Object.assign({ Authorization: 'Bearer ' + state.token }, opts.headers || {}),
+    });
+    if (res.status === 401) {
+      handleUnauthorized();
+      throw new Error('unauthorized');
+    }
+    var data = null;
+    try { data = await res.json(); } catch (e) { /* пустое тело — ок для некоторых ответов */ }
+    if (!res.ok) {
+      throw new Error((data && data.error) || ('HTTP ' + res.status));
+    }
+    return data;
+  }
+
+  // ── Token gate ───────────────────────────────────────────────────
+
+  function handleUnauthorized() {
+    stopAutoRefresh();
+    localStorage.removeItem(TOKEN_KEY);
+    state.token = '';
+    el.dashboard.style.display = 'none';
+    el.tokenGate.classList.remove('hidden');
+    el.tokenError.textContent = 'Токен недействителен, попробуйте снова.';
+  }
+
+  function showGate() {
+    el.dashboard.style.display = 'none';
+    el.tokenGate.classList.remove('hidden');
+    el.tokenInput.focus();
+  }
+
+  function showDashboard() {
+    el.tokenGate.classList.add('hidden');
+    el.dashboard.style.display = 'block';
+  }
+
+  el.tokenSubmit.addEventListener('click', trySaveToken);
+  el.tokenInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') trySaveToken();
+  });
+
+  function trySaveToken() {
+    var val = el.tokenInput.value.trim();
+    if (!val) {
+      el.tokenError.textContent = 'Введите токен.';
+      return;
+    }
+    state.token = val;
+    localStorage.setItem(TOKEN_KEY, val);
+    el.tokenError.textContent = '';
+    bootstrap();
+  }
+
+  el.signOutBtn.addEventListener('click', function () {
+    stopAutoRefresh();
+    localStorage.removeItem(TOKEN_KEY);
+    state.token = '';
+    el.tokenInput.value = '';
+    showGate();
+  });
+
+  // ── Rendering ────────────────────────────────────────────────────
+
+  function renderSystem(sys) {
+    el.statTotal.textContent = sys.totalAgents;
+    el.statActive.textContent = sys.activeAgents;
+    el.statUptime.textContent = fmtUptime(sys.uptimeSeconds);
+    el.statTime.textContent = fmtDate(sys.serverTime);
+  }
+
+  function renderAgents(agents) {
+    state.agents = agents;
+    el.agentsGrid.innerHTML = '';
+    if (!agents.length) {
+      el.agentsGrid.innerHTML = '<div class="empty-state">Агенты не найдены.</div>';
+      return;
+    }
+    agents.forEach(function (agent) {
+      var card = document.createElement('div');
+      card.className = 'card';
+      card.tabIndex = 0;
+
+      var head = document.createElement('div');
+      head.className = 'card-head';
+
+      var names = document.createElement('div');
+      var nameEl = document.createElement('div');
+      nameEl.className = 'name';
+      nameEl.textContent = agent.name;
+      var idEl = document.createElement('div');
+      idEl.className = 'id mono';
+      idEl.textContent = agent.id;
+      names.appendChild(nameEl);
+      names.appendChild(idEl);
+
+      var badge = document.createElement('span');
+      badge.className = 'badge ' + agent.status;
+      badge.textContent = statusLabel(agent.status);
+
+      head.appendChild(names);
+      head.appendChild(badge);
+
+      var desc = document.createElement('div');
+      desc.className = 'desc';
+      desc.textContent = agent.description;
+
+      var meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.innerHTML =
+        '<div>Последний запуск: <strong>' + escapeHtml(fmtDate(agent.lastRun)) + '</strong></div>' +
+        '<div>Расписание: <strong>' + escapeHtml(agent.schedule || 'по событию') + '</strong></div>';
+
+      var actions = document.createElement('div');
+      actions.className = 'card-actions';
+      var runBtn = document.createElement('button');
+      runBtn.textContent = agent.runnable ? 'Запустить вручную' : 'Только по событию';
+      runBtn.disabled = !agent.runnable;
+      runBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        runAgent(agent.id, runBtn);
+      });
+      actions.appendChild(runBtn);
+
+      card.appendChild(head);
+      card.appendChild(desc);
+      card.appendChild(meta);
+      card.appendChild(actions);
+
+      card.addEventListener('click', function () { openAgentDetail(agent.id); });
+      card.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') openAgentDetail(agent.id);
+      });
+
+      el.agentsGrid.appendChild(card);
+    });
+  }
+
+  function escapeHtml(str) {
+    var d = document.createElement('div');
+    d.textContent = str == null ? '' : String(str);
+    return d.innerHTML;
+  }
+
+  function renderLogs(logs) {
+    if (!logs || !logs.length) {
+      el.modalLogs.innerHTML = '<div class="empty">Логов пока нет</div>';
+      return;
+    }
+    el.modalLogs.innerHTML = '';
+    logs.slice().reverse().forEach(function (entry) {
+      var line = document.createElement('div');
+      line.className = 'log-line ' + (entry.level || 'info');
+      var t = document.createElement('span');
+      t.className = 't mono';
+      t.textContent = fmtDate(entry.timestamp);
+      var m = document.createElement('span');
+      m.className = 'm';
+      m.textContent = entry.message;
+      line.appendChild(t);
+      line.appendChild(m);
+      el.modalLogs.appendChild(line);
+    });
+  }
+
+  // ── Agent detail modal ───────────────────────────────────────────
+
+  var currentModalAgentId = null;
+
+  async function openAgentDetail(id) {
+    currentModalAgentId = id;
+    el.modalOverlay.classList.remove('hidden');
+    el.modalName.textContent = 'Загрузка...';
+    el.modalId.textContent = id;
+    el.modalLogs.innerHTML = '<div class="empty">Загрузка логов...</div>';
+    try {
+      var agent = await api('/api/agents/' + encodeURIComponent(id));
+      fillModal(agent);
+    } catch (err) {
+      if (err.message !== 'unauthorized') showToast('Не удалось загрузить агента: ' + err.message);
+    }
+  }
+
+  function fillModal(agent) {
+    el.modalName.textContent = agent.name;
+    el.modalId.textContent = agent.id;
+    el.modalStatus.className = 'badge ' + agent.status;
+    el.modalStatus.textContent = statusLabel(agent.status);
+    el.modalDesc.textContent = agent.description;
+    el.modalSchedule.textContent = agent.schedule || 'по событию';
+    el.modalLastRun.textContent = fmtDate(agent.lastRun);
+    el.modalLastError.textContent = agent.lastError || '—';
+    el.modalRunBtn.disabled = !agent.runnable;
+    el.modalRunBtn.textContent = agent.runnable ? 'Запустить вручную' : 'Только по событию';
+    renderLogs(agent.logs);
+  }
+
+  el.modalCloseBtn.addEventListener('click', closeModal);
+  el.modalOverlay.addEventListener('click', function (e) {
+    if (e.target === el.modalOverlay) closeModal();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeModal();
+  });
+
+  function closeModal() {
+    el.modalOverlay.classList.add('hidden');
+    currentModalAgentId = null;
+  }
+
+  el.modalRunBtn.addEventListener('click', function () {
+    if (currentModalAgentId) runAgent(currentModalAgentId, el.modalRunBtn);
+  });
+
+  // ── Actions ──────────────────────────────────────────────────────
+
+  async function runAgent(id, triggerBtn) {
+    var originalText = triggerBtn ? triggerBtn.textContent : null;
+    if (triggerBtn) { triggerBtn.disabled = true; triggerBtn.textContent = 'Запуск...'; }
+    try {
+      var result = await api('/api/agents/' + encodeURIComponent(id) + '/run', { method: 'POST' });
+      showToast((result && result.ok) ? 'Агент ' + id + ' запущен' : 'Готово');
+      await refreshAll();
+      if (currentModalAgentId === id) openAgentDetail(id);
+    } catch (err) {
+      if (err.message !== 'unauthorized') showToast('Ошибка запуска: ' + err.message);
+    } finally {
+      if (triggerBtn) {
+        triggerBtn.disabled = false;
+        triggerBtn.textContent = originalText;
+        var agent = state.agents.find(function (a) { return a.id === id; });
+        if (agent) triggerBtn.disabled = !agent.runnable;
+      }
+    }
+  }
+
+  async function refreshAll() {
+    try {
+      var sys = await api('/api/system');
+      renderSystem(sys);
+      var agents = await api('/api/agents');
+      renderAgents(agents);
+    } catch (err) {
+      if (err.message !== 'unauthorized') showToast('Ошибка обновления: ' + err.message);
+    }
+  }
+
+  el.refreshBtn.addEventListener('click', function () {
+    refreshAll();
+  });
+
+  function stopAutoRefresh() {
+    if (state.refreshTimer) {
+      clearInterval(state.refreshTimer);
+      state.refreshTimer = null;
+    }
+  }
+
+  function startAutoRefresh() {
+    stopAutoRefresh();
+    state.refreshTimer = setInterval(refreshAll, REFRESH_MS);
+  }
+
+  // ── Boot ─────────────────────────────────────────────────────────
+
+  async function bootstrap() {
+    showDashboard();
+    await refreshAll();
+    startAutoRefresh();
+  }
+
+  if (state.token) {
+    bootstrap();
+  } else {
+    showGate();
+  }
+})();
+</script>
+
+</body>
+</html>
