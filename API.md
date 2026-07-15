@@ -1,16 +1,23 @@
 # Dashboard API
 
-HTTP API для внешнего дашборда мониторинга (веб + мобильный PWA). Поднимается
-в том же процессе, что и Telegram-бот (`index.js`), но на отдельном порту —
-не конфликтует ни с ботом (Telegram polling), ни с HTTP API voice-core
-(`PORT`, по умолчанию 3000).
+HTTP API для внешнего дашборда мониторинга (веб + мобильный PWA). Роуты
+`/api/system` и `/api/agents*` смонтированы на тот же Express-инстанс и тот
+же порт (`PORT`, задаёт сама Railway), что уже слушает существующий HTTP API
+для voice-core (`POST /api/ask`) — на этот порт указывает публичный домен
+сервиса на Railway. Отдельного порта дашборд не занимает: Railway
+проксирует наружу только один порт на один домен, второй порт снаружи всё
+равно был бы недостижим без отдельного кастомного домена.
 
-- Порт: переменная окружения `DASHBOARD_API_PORT`, по умолчанию `3001`.
-- Авторизация: заголовок `Authorization: Bearer <DASHBOARD_API_TOKEN>` на всех
-  эндпоинтах. Без токена или с неверным токеном — `401 {"error": "unauthorized"}`.
+- Базовый URL: публичный домен сервиса, например
+  `https://jarvis-bot-production-90c2.up.railway.app`.
+- Авторизация: заголовок `Authorization: Bearer <DASHBOARD_API_TOKEN>` на
+  всех `/api/agents*` и `/api/system` эндпоинтах. Без токена или с неверным
+  токеном — `401 {"error": "unauthorized"}`. Это отдельный токен от
+  `VOICE_API_TOKEN`, которым защищён `/api/ask` — они не пересекаются.
 - CORS: `Access-Control-Allow-Origin: *` — можно ходить с любого домена/локально.
 - Реализация: `agent_registry.js` (in-memory реестр статусов/логов агентов) +
-  `api/server.js` (Express-роуты).
+  `api/server.js` (`createDashboardRouter` — Express-роутер, монтируется в
+  `index.js` на существующий `api`-инстанс).
 
 ## Агенты
 
@@ -26,19 +33,19 @@ HTTP API для внешнего дашборда мониторинга (веб
 
 ## Эндпоинты
 
+Примеры ниже — с реальным доменом сервиса. Локально (без реального бота —
+см. предупреждение в CLAUDE.md про `node index.js`) можно смонтировать
+`createDashboardRouter` на свой тестовый app, как это делают тесты в
+`test/api_server.test.js`.
+
 ### `GET /api/system`
 
 Сводка по системе.
 
 ```bash
 curl -H "Authorization: Bearer $DASHBOARD_API_TOKEN" \
-  http://localhost:3001/api/system
+  https://jarvis-bot-production-90c2.up.railway.app/api/system
 ```
-
-На Railway порт `DASHBOARD_API_PORT` не выставлен наружу автоматически —
-как и `PORT` для основного voice-core API, нужен отдельный публичный домен
-через Railway → Settings → Networking → Generate Domain, привязанный к этому
-порту, либо доступ изнутри той же приватной сети Railway.
 
 ```json
 {
@@ -55,7 +62,7 @@ curl -H "Authorization: Bearer $DASHBOARD_API_TOKEN" \
 
 ```bash
 curl -H "Authorization: Bearer $DASHBOARD_API_TOKEN" \
-  http://localhost:3001/api/agents
+  https://jarvis-bot-production-90c2.up.railway.app/api/agents
 ```
 
 ```json
@@ -81,7 +88,7 @@ curl -H "Authorization: Bearer $DASHBOARD_API_TOKEN" \
 
 ```bash
 curl -H "Authorization: Bearer $DASHBOARD_API_TOKEN" \
-  http://localhost:3001/api/agents/kwork-monitor
+  https://jarvis-bot-production-90c2.up.railway.app/api/agents/kwork-monitor
 ```
 
 ```json
@@ -108,7 +115,7 @@ curl -H "Authorization: Bearer $DASHBOARD_API_TOKEN" \
 
 ```bash
 curl -H "Authorization: Bearer $DASHBOARD_API_TOKEN" \
-  "http://localhost:3001/api/agents/kwork-monitor/logs?limit=20"
+  "https://jarvis-bot-production-90c2.up.railway.app/api/agents/kwork-monitor/logs?limit=20"
 ```
 
 ```json
@@ -128,7 +135,7 @@ curl -H "Authorization: Bearer $DASHBOARD_API_TOKEN" \
 
 ```bash
 curl -X POST -H "Authorization: Bearer $DASHBOARD_API_TOKEN" \
-  http://localhost:3001/api/agents/kwork-monitor/run
+  https://jarvis-bot-production-90c2.up.railway.app/api/agents/kwork-monitor/run
 ```
 
 ```json
@@ -142,7 +149,9 @@ curl -X POST -H "Authorization: Bearer $DASHBOARD_API_TOKEN" \
 
 ## Переменные окружения
 
-| Переменная            | Обязательна | Значение по умолчанию | Описание |
-| ---------------------- | ----------- | ---------------------- | -------- |
-| `DASHBOARD_API_TOKEN`  | да          | —                       | Bearer-токен для авторизации. Сгенерировать: `openssl rand -hex 32` |
-| `DASHBOARD_API_PORT`   | нет         | `3001`                  | Порт dashboard API |
+| Переменная            | Обязательна | Описание |
+| ---------------------- | ----------- | -------- |
+| `DASHBOARD_API_TOKEN`  | да          | Bearer-токен для авторизации `/api/system` и `/api/agents*`. Сгенерировать: `openssl rand -hex 32` |
+
+`DASHBOARD_API_PORT` не используется — дашборд-роуты живут на том же порту,
+что и остальной HTTP API бота (`PORT`, задаёт Railway).

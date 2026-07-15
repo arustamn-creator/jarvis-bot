@@ -1,8 +1,27 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { createApp } = require('../api/server');
+const express = require('express');
+const { createDashboardRouter, cors } = require('../api/server');
 
 const TEST_TOKEN = 'test-dashboard-token';
+
+// Собираем app так же, как index.js монтирует дашборд-роуты на общий `api`
+// (тот же процесс/порт, что и /api/ask) — а не отдельным сервером.
+function createApp(registry, runners) {
+  const app = express();
+  app.use(cors);
+  app.use(express.json());
+  app.use(createDashboardRouter(registry, runners));
+  return app;
+}
+
+// Мимикрирует существующий /api/ask с собственным токеном (VOICE_API_TOKEN),
+// живущий на том же app — проверяем, что дашборд-авторизация его не задевает.
+function mountUnrelatedRoute(app) {
+  app.post('/api/ask', (req, res) => {
+    res.json({ reply: 'unrelated route reached' });
+  });
+}
 
 function makeFakeRegistry() {
   const agents = {
@@ -220,5 +239,28 @@ test('ответ содержит CORS-заголовок Access-Control-Allow-O
       headers: { Authorization: `Bearer ${TEST_TOKEN}` },
     });
     assert.equal(res.headers.get('access-control-allow-origin'), '*');
+  });
+});
+
+test('дашборд-авторизация не блокирует несвязанный маршрут на том же app (/api/ask)', async () => {
+  process.env.DASHBOARD_API_TOKEN = TEST_TOKEN;
+  const app = createApp(makeFakeRegistry(), {});
+  mountUnrelatedRoute(app);
+  await withServer(app, async (base) => {
+    // Без DASHBOARD_API_TOKEN и вообще без заголовка Authorization —
+    // /api/ask не должен требовать его, это отдельный маршрут со своей auth.
+    const res = await fetch(`${base}/api/ask`, { method: 'POST' });
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.reply, 'unrelated route reached');
+  });
+});
+
+test('OPTIONS preflight на дашборд-маршрут отвечает 204 без токена', async () => {
+  process.env.DASHBOARD_API_TOKEN = TEST_TOKEN;
+  const app = createApp(makeFakeRegistry(), {});
+  await withServer(app, async (base) => {
+    const res = await fetch(`${base}/api/agents`, { method: 'OPTIONS' });
+    assert.equal(res.status, 204);
   });
 });

@@ -477,7 +477,13 @@ function tokenMatches(provided) {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
+const { createDashboardRouter, cors: dashboardCors } = require('./api/server');
+
 const api = express();
+// Открытый CORS для всего API-процесса — безопасно для /api/ask (server-to-
+// server вызов от voice-core, без браузера), нужен для /api/agents* (дашборд
+// с произвольного домена/локально).
+api.use(dashboardCors);
 api.use(express.json());
 
 api.post('/api/ask', async (req, res) => {
@@ -505,20 +511,21 @@ api.post('/api/ask', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3000;
-api.listen(PORT, () => {
-  console.log(`[Джарвис] HTTP API слушает порт ${PORT}`);
-});
-
 // === Dashboard API (мониторинг агентов для внешнего фронтенда) ===
-
-const { createApp: createDashboardApp, startServer: startDashboardServer } = require('./api/server');
+// Те же процесс и порт, что и /api/ask выше — Railway пробрасывает наружу
+// только один порт на публичный домен сервиса, отдельный порт под дашборд
+// снаружи недоступен.
 
 const dashboardRunners = {
   'kwork-monitor': () => checkKworkOrders(process.env.TELEGRAM_CHAT_ID),
 };
 
-startDashboardServer(createDashboardApp(agentRegistry, dashboardRunners));
+api.use(createDashboardRouter(agentRegistry, dashboardRunners));
+
+const PORT = process.env.PORT || 3000;
+api.listen(PORT, () => {
+  console.log(`[Джарвис] HTTP API слушает порт ${PORT}`);
+});
 
 // === Запуск ===
 

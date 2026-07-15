@@ -1,8 +1,9 @@
-// HTTP API для внешнего дашборда мониторинга (веб/PWA).
-// Отдельный порт (DASHBOARD_API_PORT, по умолчанию 3001), отдельный процесс
-// маршрутов — не трогает Telegram-бота и его логику. createApp() — чистая
-// фабрика без побочных эффектов (не открывает порт), чтобы её можно было
-// тестировать без запуска бота; startServer() поднимает реальный listen.
+// HTTP-роуты дашборда мониторинга (веб/PWA). Монтируются на тот же Express-
+// инстанс и тот же порт, что уже слушает Railway через публичный домен
+// (см. index.js: `api`, PORT), а не на отдельном порту — Railway-сервис
+// проксирует наружу только один порт на один домен. createDashboardRouter()
+// — чистая фабрика без побочных эффектов (не открывает порт сама), чтобы её
+// можно было монтировать на существующий app и тестировать без запуска бота.
 
 const express = require('express');
 const crypto = require('crypto');
@@ -15,6 +16,9 @@ function tokenMatches(provided) {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
+// Открытый CORS, безопасно применять глобально на весь app — просто
+// добавляет заголовки и отвечает на preflight, не блокирует и не меняет
+// поведение остальных маршрутов (например /api/ask для voice-core).
 function cors(req, res, next) {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -23,6 +27,9 @@ function cors(req, res, next) {
   next();
 }
 
+// Bearer-авторизация по DASHBOARD_API_TOKEN — применяется только внутри
+// роутов этого роутера, не глобально на app, чтобы не задеть /api/ask
+// (у него свой токен, VOICE_API_TOKEN).
 function auth(req, res, next) {
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   if (!tokenMatches(token)) {
@@ -34,13 +41,10 @@ function auth(req, res, next) {
 // runners: { [agentId]: () => Promise<any> } — функции ручного запуска,
 // переданные вызывающей стороной (index.js), чтобы не дублировать логику
 // askClaude/checkKworkOrders здесь.
-function createApp(registry, runners = {}) {
-  const app = express();
-  app.use(cors);
-  app.use(express.json());
-  app.use(auth);
+function createDashboardRouter(registry, runners = {}) {
+  const router = express.Router();
 
-  app.get('/api/system', (req, res) => {
+  router.get('/api/system', auth, (req, res) => {
     const agents = registry.listAgents();
     res.json({
       totalAgents: agents.length,
@@ -50,17 +54,17 @@ function createApp(registry, runners = {}) {
     });
   });
 
-  app.get('/api/agents', (req, res) => {
+  router.get('/api/agents', auth, (req, res) => {
     res.json(registry.listAgents());
   });
 
-  app.get('/api/agents/:id', (req, res) => {
+  router.get('/api/agents/:id', auth, (req, res) => {
     const agent = registry.getAgent(req.params.id);
     if (!agent) return res.status(404).json({ error: 'agent not found' });
     res.json(agent);
   });
 
-  app.get('/api/agents/:id/logs', (req, res) => {
+  router.get('/api/agents/:id/logs', auth, (req, res) => {
     if (!registry.exists(req.params.id)) {
       return res.status(404).json({ error: 'agent not found' });
     }
@@ -68,7 +72,7 @@ function createApp(registry, runners = {}) {
     res.json(registry.getLogs(req.params.id, Number.isFinite(limit) ? limit : 50));
   });
 
-  app.post('/api/agents/:id/run', async (req, res) => {
+  router.post('/api/agents/:id/run', auth, async (req, res) => {
     const id = req.params.id;
     if (!registry.exists(id)) {
       return res.status(404).json({ error: 'agent not found' });
@@ -88,14 +92,7 @@ function createApp(registry, runners = {}) {
     }
   });
 
-  return app;
+  return router;
 }
 
-function startServer(app) {
-  const port = process.env.DASHBOARD_API_PORT || 3001;
-  return app.listen(port, () => {
-    console.log(`[dashboard-api] слушает порт ${port}`);
-  });
-}
-
-module.exports = { createApp, startServer, tokenMatches };
+module.exports = { createDashboardRouter, cors, tokenMatches };
