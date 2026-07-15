@@ -471,27 +471,117 @@
     height: 100%;
     overflow: visible;
   }
-  .map-lines line {
-    stroke: var(--border-strong);
+  /* Линии-разряды к ядру — тёплый огненный тон, отдельный от статусных
+     цветов точек, лёгкое асинхронное мерцание. */
+  .map-bolt {
+    fill: none;
+    stroke: #ffb347;
     stroke-width: 1;
+    opacity: 0.6;
     vector-effect: non-scaling-stroke;
+    animation: boltFlicker 2.6s ease-in-out infinite;
+  }
+  @keyframes boltFlicker {
+    0%, 100% { opacity: 0.35; }
+    50% { opacity: 0.8; }
   }
 
-  .map-core {
+  /* Ядро — многослойная "живая" сфера в духе реактора: внешнее блёклое
+     гало, средний слой, яркая сердцевина, медленно вращающийся блик.
+     Дыхание — на .map-core-wrap (transform, дёшево для рендера);
+     hover/touch-реакция — на отдельном .map-core-hit снаружи, чтобы не
+     конфликтовать с тем же transform-свойством, которое уже анимирует
+     дыхание (иначе CSS-анимация постоянно переопределяла бы hover). */
+  .map-core-hit {
     position: absolute;
     left: 50%;
     top: 50%;
-    width: 72px;
-    height: 72px;
-    transform: translate(-50%, -50%);
-    border-radius: 50%;
-    background: radial-gradient(circle at 35% 32%, #f7e3a8, #d4af37 55%, #8a6d1f 100%);
-    box-shadow: 0 0 30px 8px #d4af3766, 0 0 70px 22px #d4af3726;
-    animation: coreGlow 3.4s ease-in-out infinite;
+    width: 96px;
+    height: 96px;
+    transform: translate(-50%, -50%) scale(1);
+    transition: transform 0.35s ease-out;
+    cursor: pointer;
   }
-  @keyframes coreGlow {
-    0%, 100% { box-shadow: 0 0 30px 8px #d4af3766, 0 0 70px 22px #d4af3726; }
-    50% { box-shadow: 0 0 38px 12px #d4af3788, 0 0 90px 30px #d4af3733; }
+  .map-core-hit:hover,
+  .map-core-hit.touched {
+    transform: translate(-50%, -50%) scale(1.18);
+  }
+
+  .map-core-wrap {
+    position: absolute;
+    inset: 0;
+    animation: coreBreathe 3.2s ease-in-out infinite;
+  }
+  @keyframes coreBreathe {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+  }
+
+  .core-halo, .core-mid, .core-inner, .core-shine {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .core-halo {
+    width: 150px;
+    height: 150px;
+    background: radial-gradient(circle, #ffb34766 0%, #ffb34722 45%, transparent 72%);
+    filter: blur(6px);
+    animation: glowBreathe 3.2s ease-in-out infinite;
+  }
+  @keyframes glowBreathe {
+    0%, 100% { opacity: 0.55; transform: translate(-50%, -50%) scale(1); }
+    50% { opacity: 0.85; transform: translate(-50%, -50%) scale(1.1); }
+  }
+
+  .core-mid {
+    width: 92px;
+    height: 92px;
+    background: radial-gradient(circle, #ff8c42aa 0%, #ff8c4244 65%, transparent 100%);
+    filter: blur(1px);
+  }
+
+  .core-inner {
+    width: 54px;
+    height: 54px;
+    background: radial-gradient(circle at 35% 32%, #ffe0b3, #ff6b1a 55%, #c8430f 100%);
+    box-shadow: 0 0 16px 4px #ff6b1a99;
+  }
+
+  .core-shine {
+    width: 54px;
+    height: 54px;
+    background: radial-gradient(circle at 28% 26%, rgba(255, 255, 255, 0.55), transparent 45%);
+    mix-blend-mode: screen;
+    animation: coreRotate 17s linear infinite;
+  }
+  @keyframes coreRotate {
+    from { transform: translate(-50%, -50%) rotate(0deg); }
+    to { transform: translate(-50%, -50%) rotate(360deg); }
+  }
+
+  /* Разовая "вспышка"-кольцо по клику на ядро — decorative only. */
+  .core-shockwave {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 2px solid #ff8c42;
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .core-shockwave.pulse {
+    animation: coreShockwave 0.55s ease-out 1;
+  }
+  @keyframes coreShockwave {
+    0% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.85; }
+    100% { transform: translate(-50%, -50%) scale(2.8); opacity: 0; }
   }
 
   .map-node {
@@ -658,7 +748,15 @@
   <div id="mapView" class="view hidden">
     <div class="map-container" id="mapContainer">
       <svg class="map-lines" id="mapLines" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
-      <div class="map-core" title="Ядро JARVIS"></div>
+      <div class="map-core-hit" id="mapCoreHit" tabindex="0" role="button" aria-label="Ядро JARVIS">
+        <div class="map-core-wrap">
+          <div class="core-halo"></div>
+          <div class="core-mid"></div>
+          <div class="core-inner"></div>
+          <div class="core-shine"></div>
+        </div>
+        <div class="core-shockwave" id="coreShockwave"></div>
+      </div>
     </div>
     <p class="map-hint">Ещё 20 агентов появятся на карте по мере подключения.</p>
   </div>
@@ -744,6 +842,8 @@
     mapView: document.getElementById('mapView'),
     mapContainer: document.getElementById('mapContainer'),
     mapLines: document.getElementById('mapLines'),
+    mapCoreHit: document.getElementById('mapCoreHit'),
+    coreShockwave: document.getElementById('coreShockwave'),
     tabButtons: Array.prototype.slice.call(document.querySelectorAll('.tab-btn')),
     modal: document.getElementById('agentModal'),
     modalOverlay: document.getElementById('agentModalOverlay'),
@@ -814,6 +914,7 @@
 
   function handleUnauthorized() {
     stopAutoRefresh();
+    stopBoltRegen();
     localStorage.removeItem(TOKEN_KEY);
     state.token = '';
     el.dashboard.style.display = 'none';
@@ -851,6 +952,7 @@
 
   el.signOutBtn.addEventListener('click', function () {
     stopAutoRefresh();
+    stopBoltRegen();
     localStorage.removeItem(TOKEN_KEY);
     state.token = '';
     el.tokenInput.value = '';
@@ -963,6 +1065,50 @@
 
   // ── Map view: ядро + агенты вокруг ────────────────────────────────
 
+  var SVG_NS = 'http://www.w3.org/2000/svg';
+
+  // Ломаная линия-разряд между точкой и ядром — 3-5 случайных изломов,
+  // смещённых перпендикулярно направлению линии, чтобы выглядело как
+  // молния, а не хаос: смещение ограничено долей длины линии.
+  function buildBoltPoints(x1, y1, x2, y2) {
+    var segments = 3 + Math.floor(Math.random() * 3); // 3..5
+    var dx = x2 - x1;
+    var dy = y2 - y1;
+    var len = Math.sqrt(dx * dx + dy * dy) || 1;
+    var nx = -dy / len;
+    var ny = dx / len;
+    var points = [[x1, y1]];
+    for (var i = 1; i < segments; i++) {
+      var t = i / segments;
+      var offset = (Math.random() - 0.5) * len * 0.18;
+      points.push([x1 + dx * t + nx * offset, y1 + dy * t + ny * offset]);
+    }
+    points.push([x2, y2]);
+    return points;
+  }
+
+  function pointsToAttr(points) {
+    return points.map(function (p) { return p[0].toFixed(2) + ',' + p[1].toFixed(2); }).join(' ');
+  }
+
+  // Раз в несколько секунд немного меняем форму разрядов — эффект живой
+  // энергии. Работает только пока открыт вид "Карта".
+  var boltRegenTimer = null;
+  function startBoltRegen() {
+    stopBoltRegen();
+    boltRegenTimer = setInterval(function () {
+      if (el.mapView.classList.contains('hidden')) return;
+      Array.prototype.slice.call(el.mapLines.querySelectorAll('.map-bolt')).forEach(function (bolt) {
+        var x2 = parseFloat(bolt.dataset.x2);
+        var y2 = parseFloat(bolt.dataset.y2);
+        bolt.setAttribute('points', pointsToAttr(buildBoltPoints(50, 50, x2, y2)));
+      });
+    }, 3500);
+  }
+  function stopBoltRegen() {
+    if (boltRegenTimer) { clearInterval(boltRegenTimer); boltRegenTimer = null; }
+  }
+
   function renderMap(agents) {
     // Существующие DOM-узлы карты (кроме ядра и SVG) — точки и подписи.
     Array.prototype.slice.call(el.mapContainer.querySelectorAll('.map-node, .map-label')).forEach(function (n) {
@@ -979,12 +1125,13 @@
       var x = 50 + layout.radius * Math.cos(rad);
       var y = 50 + layout.radius * Math.sin(rad);
 
-      var line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-      line.setAttribute('x1', '50');
-      line.setAttribute('y1', '50');
-      line.setAttribute('x2', String(x));
-      line.setAttribute('y2', String(y));
-      el.mapLines.appendChild(line);
+      var bolt = document.createElementNS(SVG_NS, 'polyline');
+      bolt.setAttribute('class', 'map-bolt');
+      bolt.setAttribute('points', pointsToAttr(buildBoltPoints(50, 50, x, y)));
+      bolt.dataset.x2 = String(x);
+      bolt.dataset.y2 = String(y);
+      bolt.style.animationDelay = (Math.random() * 2).toFixed(2) + 's';
+      el.mapLines.appendChild(bolt);
 
       var node = document.createElement('div');
       node.className = 'map-node ' + agent.status;
@@ -1140,12 +1287,27 @@
     state.refreshTimer = setInterval(refreshAll, REFRESH_MS);
   }
 
+  // ── Core interactions (декоративные, точек-агентов не касаются) ────
+
+  el.mapCoreHit.addEventListener('click', function () {
+    el.coreShockwave.classList.remove('pulse');
+    void el.coreShockwave.offsetWidth; // форс reflow, чтобы анимация перезапускалась при повторных кликах
+    el.coreShockwave.classList.add('pulse');
+  });
+  el.mapCoreHit.addEventListener('touchstart', function () {
+    el.mapCoreHit.classList.add('touched');
+  }, { passive: true });
+  el.mapCoreHit.addEventListener('touchend', function () {
+    el.mapCoreHit.classList.remove('touched');
+  });
+
   // ── Boot ─────────────────────────────────────────────────────────
 
   async function bootstrap() {
     showDashboard();
     await refreshAll();
     startAutoRefresh();
+    startBoltRegen();
   }
 
   if (state.token) {
