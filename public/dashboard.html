@@ -52,7 +52,6 @@
   }
 
   header.top {
-    position: relative;
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
@@ -63,25 +62,7 @@
     border: 1px solid var(--border);
     border-radius: var(--radius);
     background: var(--bg-panel);
-    overflow: hidden;
   }
-
-  /* Едва заметный геометрический орнамент в духе кубачинской гравировки —
-     решётка из пересекающихся диагоналей поверх графитовой панели. */
-  header.top::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    opacity: 0.5;
-    pointer-events: none;
-    background:
-      repeating-linear-gradient(45deg, rgba(192,192,192,0.05) 0 1px, transparent 1px 22px),
-      repeating-linear-gradient(-45deg, rgba(95,215,215,0.05) 0 1px, transparent 1px 22px);
-    -webkit-mask-image: linear-gradient(90deg, #000 0%, transparent 75%);
-    mask-image: linear-gradient(90deg, #000 0%, transparent 75%);
-  }
-
-  .brand { position: relative; }
 
   .brand h1 {
     margin: 0;
@@ -102,7 +83,6 @@
   }
 
   .top-actions {
-    position: relative;
     display: flex;
     gap: 8px;
     align-items: center;
@@ -168,6 +148,25 @@
   }
   .stat.turquoise .value { color: var(--turquoise); }
   .stat.silver .value { color: var(--silver); }
+
+  /* ── View tabs (Сетка / Карта) ─────────────────────────────────── */
+
+  .view-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .tab-btn {
+    font-size: 13px;
+    letter-spacing: 0.03em;
+  }
+  .tab-btn.active {
+    border-color: var(--turquoise);
+    color: var(--turquoise);
+    background: var(--turquoise-bg);
+  }
+
+  .view.hidden { display: none; }
 
   /* ── Sections & agent cards ─────────────────────────────────────── */
 
@@ -452,6 +451,125 @@
     padding: 20px 0;
   }
 
+  /* ── Map view — светящееся ядро системы и агенты вокруг ──────────── */
+
+  .map-container {
+    position: relative;
+    width: 100%;
+    max-width: 560px;
+    aspect-ratio: 1 / 1;
+    margin: 0 auto;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 50%, #1c1e2000 0%, #14161700 55%, transparent 75%);
+  }
+
+  .map-lines {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+  .map-lines line {
+    stroke: var(--border-strong);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .map-core {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 72px;
+    height: 72px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 32%, #f7e3a8, #d4af37 55%, #8a6d1f 100%);
+    box-shadow: 0 0 30px 8px #d4af3766, 0 0 70px 22px #d4af3726;
+    animation: coreGlow 3.4s ease-in-out infinite;
+  }
+  @keyframes coreGlow {
+    0%, 100% { box-shadow: 0 0 30px 8px #d4af3766, 0 0 70px 22px #d4af3726; }
+    50% { box-shadow: 0 0 38px 12px #d4af3788, 0 0 90px 30px #d4af3733; }
+  }
+
+  .map-node {
+    position: absolute;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    border: 1px solid rgba(0, 0, 0, 0.25);
+  }
+  .map-node.active { background: var(--turquoise); box-shadow: 0 0 12px 4px #5fd7d799; }
+  .map-node.idle { background: var(--silver); box-shadow: 0 0 8px 3px #c0c0c066; }
+  .map-node.error { background: var(--danger); box-shadow: 0 0 12px 4px #c9635a99; animation: pulse 1.4s infinite; }
+
+  .map-label {
+    position: absolute;
+    transform: translate(-50%, 0);
+    font-size: 11px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    text-align: center;
+    pointer-events: none;
+  }
+
+  .map-hint {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 12px;
+    margin-top: 18px;
+  }
+
+  /* ── CRT-скан: лёгкая фоновая текстура на всю страницу ────────────── */
+
+  #scanOverlay {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 500;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.6) 0px,
+      rgba(0, 0, 0, 0.6) 1px,
+      transparent 1px,
+      transparent 4px
+    );
+    opacity: 0.045;
+  }
+
+  /* Разовый "проезд" сканера при открытии модалки деталей агента —
+     поверх обычного фонового скана, гораздо заметнее, но только на миг. */
+  .modal { position: relative; overflow-x: hidden; }
+  .modal .scan-sweep {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -25%;
+    height: 30%;
+    background: linear-gradient(
+      to bottom,
+      transparent,
+      #d4af3733 40%,
+      #5fd7d755 50%,
+      #d4af3733 60%,
+      transparent
+    );
+    opacity: 0;
+    pointer-events: none;
+  }
+  .modal.scanning .scan-sweep {
+    animation: scanSweep 0.7s ease-out 1;
+  }
+  @keyframes scanSweep {
+    0% { top: -25%; opacity: 0.9; }
+    12% { opacity: 0.9; }
+    100% { top: 100%; opacity: 0; }
+  }
+
   /* ── Mobile ─────────────────────────────────────────────────────── */
 
   @media (max-width: 640px) {
@@ -459,10 +577,13 @@
     .agents-grid { grid-template-columns: 1fr; }
     header.top { flex-direction: column; }
     .top-actions { align-self: stretch; justify-content: space-between; }
+    .map-container { max-width: 320px; }
   }
 </style>
 </head>
 <body>
+
+<div id="scanOverlay" aria-hidden="true"></div>
 
 <div id="tokenGate" class="overlay hidden">
   <div class="gate-box">
@@ -505,31 +626,47 @@
     </div>
   </div>
 
-  <h2 class="section">Основные процессы</h2>
-  <div class="agents-grid" id="agentsGrid">
-    <div class="empty-state">Загрузка...</div>
+  <div class="view-tabs">
+    <button class="tab-btn active" type="button" data-view="grid">▦ Сетка</button>
+    <button class="tab-btn" type="button" data-view="map">◎ Карта</button>
   </div>
 
-  <h2 class="section section-secondary">Скоро</h2>
-  <div class="agents-grid">
-    <div class="card card-placeholder">
-      <div class="card-head">
-        <div class="card-title">
-          <span class="icon">➕</span>
-          <div class="names">
-            <div class="name">Ещё 19 агентов</div>
-            <div class="id mono">в разработке</div>
-          </div>
-        </div>
-        <span class="badge pending">Не подключён</span>
-      </div>
-      <div class="desc">Coder, Researcher, Memory, Self-Improve и другие — появятся здесь по мере готовности.</div>
+  <div id="gridView" class="view">
+    <h2 class="section">Основные процессы</h2>
+    <div class="agents-grid" id="agentsGrid">
+      <div class="empty-state">Загрузка...</div>
     </div>
+
+    <h2 class="section section-secondary">Скоро</h2>
+    <div class="agents-grid">
+      <div class="card card-placeholder">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="icon">➕</span>
+            <div class="names">
+              <div class="name">Ещё 20 агентов</div>
+              <div class="id mono">в разработке</div>
+            </div>
+          </div>
+          <span class="badge pending">Не подключён</span>
+        </div>
+        <div class="desc">Юрист-советник, Маркетолог, Трейдер, Создатель сайтов, Страж системы Jarvis и другие — появятся здесь по мере готовности.</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="mapView" class="view hidden">
+    <div class="map-container" id="mapContainer">
+      <svg class="map-lines" id="mapLines" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+      <div class="map-core" title="Ядро JARVIS"></div>
+    </div>
+    <p class="map-hint">Ещё 20 агентов появятся на карте по мере подключения.</p>
   </div>
 </div>
 
 <div id="agentModalOverlay" class="overlay hidden">
-  <div class="modal">
+  <div class="modal" id="agentModal">
+    <div class="scan-sweep" aria-hidden="true"></div>
     <div class="modal-head">
       <div>
         <h3 id="modalName">—</h3>
@@ -574,6 +711,16 @@
   };
   function agentIcon(id) { return AGENT_ICONS[id] || '🤖'; }
 
+  // Раскладка карты: угол (градусы, 0 = вправо, по часовой стрелке вниз)
+  // и радиус (% от половины контейнера) для каждого известного агента —
+  // разные дистанции от ядра, как просили. Неизвестные будущие id
+  // раскладываются равномерно по кругу автоматически.
+  var MAP_LAYOUT = {
+    'chat-handler': { angle: -90, radius: 30 },
+    'kwork-monitor': { angle: 150, radius: 40 },
+    'voice-pipeline': { angle: 30, radius: 36 },
+  };
+
   var state = {
     token: localStorage.getItem(TOKEN_KEY) || '',
     agents: [],
@@ -593,6 +740,12 @@
     statUptime: document.getElementById('statUptime'),
     statTime: document.getElementById('statTime'),
     agentsGrid: document.getElementById('agentsGrid'),
+    gridView: document.getElementById('gridView'),
+    mapView: document.getElementById('mapView'),
+    mapContainer: document.getElementById('mapContainer'),
+    mapLines: document.getElementById('mapLines'),
+    tabButtons: Array.prototype.slice.call(document.querySelectorAll('.tab-btn')),
+    modal: document.getElementById('agentModal'),
     modalOverlay: document.getElementById('agentModalOverlay'),
     modalName: document.getElementById('modalName'),
     modalId: document.getElementById('modalId'),
@@ -790,6 +943,70 @@
 
       el.agentsGrid.appendChild(card);
     });
+
+    renderMap(agents);
+  }
+
+  // ── View switching (Сетка / Карта) ────────────────────────────────
+
+  el.tabButtons.forEach(function (btn) {
+    btn.addEventListener('click', function () { switchView(btn.dataset.view); });
+  });
+
+  function switchView(view) {
+    el.gridView.classList.toggle('hidden', view !== 'grid');
+    el.mapView.classList.toggle('hidden', view !== 'map');
+    el.tabButtons.forEach(function (btn) {
+      btn.classList.toggle('active', btn.dataset.view === view);
+    });
+  }
+
+  // ── Map view: ядро + агенты вокруг ────────────────────────────────
+
+  function renderMap(agents) {
+    // Существующие DOM-узлы карты (кроме ядра и SVG) — точки и подписи.
+    Array.prototype.slice.call(el.mapContainer.querySelectorAll('.map-node, .map-label')).forEach(function (n) {
+      n.remove();
+    });
+    el.mapLines.innerHTML = '';
+
+    agents.forEach(function (agent, index) {
+      var layout = MAP_LAYOUT[agent.id] || {
+        angle: (360 / Math.max(agents.length, 1)) * index,
+        radius: 34,
+      };
+      var rad = (layout.angle * Math.PI) / 180;
+      var x = 50 + layout.radius * Math.cos(rad);
+      var y = 50 + layout.radius * Math.sin(rad);
+
+      var line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', '50');
+      line.setAttribute('y1', '50');
+      line.setAttribute('x2', String(x));
+      line.setAttribute('y2', String(y));
+      el.mapLines.appendChild(line);
+
+      var node = document.createElement('div');
+      node.className = 'map-node ' + agent.status;
+      node.style.left = x + '%';
+      node.style.top = y + '%';
+      node.title = agent.name + ' — ' + statusLabel(agent.status);
+      node.tabIndex = 0;
+      node.setAttribute('role', 'button');
+      node.setAttribute('aria-label', agent.name);
+      node.addEventListener('click', function () { openAgentDetail(agent.id); });
+      node.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') openAgentDetail(agent.id);
+      });
+      el.mapContainer.appendChild(node);
+
+      var label = document.createElement('div');
+      label.className = 'map-label';
+      label.style.left = x + '%';
+      label.style.top = 'calc(' + y + '% + 12px)';
+      label.textContent = agent.name;
+      el.mapContainer.appendChild(label);
+    });
   }
 
   function escapeHtml(str) {
@@ -826,6 +1043,12 @@
   async function openAgentDetail(id) {
     currentModalAgentId = id;
     el.modalOverlay.classList.remove('hidden');
+    // Разовый "проезд" сканера при каждом открытии — сброс класса и
+    // принудительный reflow, иначе повторное добавление того же класса
+    // не перезапустит CSS-анимацию.
+    el.modal.classList.remove('scanning');
+    void el.modal.offsetWidth;
+    el.modal.classList.add('scanning');
     el.modalName.textContent = 'Загрузка...';
     el.modalId.textContent = id;
     el.modalLogs.innerHTML = '<div class="empty">Загрузка логов...</div>';
