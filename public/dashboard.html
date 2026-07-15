@@ -517,7 +517,7 @@
     50% { transform: scale(1.08); }
   }
 
-  .core-halo, .core-mid, .core-inner, .core-shine {
+  .core-glow, .core-shine {
     position: absolute;
     left: 50%;
     top: 50%;
@@ -525,36 +525,36 @@
     transform: translate(-50%, -50%);
   }
 
-  .core-halo {
-    width: 150px;
-    height: 150px;
-    background: radial-gradient(circle, #ffb34766 0%, #ffb34722 45%, transparent 72%);
-    filter: blur(6px);
-    animation: glowBreathe 3.2s ease-in-out infinite;
+  /* Единый плавный градиент вместо стопки отдельных кругов — один
+     radial-gradient с 5 цветовыми стопами, без видимых границ между
+     "слоями". box-shadow добавляет мягкое затухание за пределами
+     собственных границ элемента. */
+  .core-glow {
+    width: 128px;
+    height: 128px;
+    background: radial-gradient(
+      circle at 38% 35%,
+      #ffffff 0%,
+      #ff6b1a 22%,
+      #ff8c42 46%,
+      #ffb347 72%,
+      transparent 100%
+    );
+    box-shadow: 0 0 46px 14px #ffb34740;
+    animation: glowPulse 3.2s ease-in-out infinite;
   }
-  @keyframes glowBreathe {
-    0%, 100% { opacity: 0.55; transform: translate(-50%, -50%) scale(1); }
-    50% { opacity: 0.85; transform: translate(-50%, -50%) scale(1.1); }
-  }
-
-  .core-mid {
-    width: 92px;
-    height: 92px;
-    background: radial-gradient(circle, #ff8c42aa 0%, #ff8c4244 65%, transparent 100%);
-    filter: blur(1px);
-  }
-
-  .core-inner {
-    width: 54px;
-    height: 54px;
-    background: radial-gradient(circle at 35% 32%, #ffe0b3, #ff6b1a 55%, #c8430f 100%);
-    box-shadow: 0 0 16px 4px #ff6b1a99;
+  @keyframes glowPulse {
+    0%, 100% { opacity: 0.92; }
+    50% { opacity: 1; }
   }
 
+  /* Мягкий вращающийся блик — слабее и более разлитый, чем раньше,
+     чтобы читаться как движение энергии внутри, а не как пятно. */
   .core-shine {
-    width: 54px;
-    height: 54px;
-    background: radial-gradient(circle at 28% 26%, rgba(255, 255, 255, 0.55), transparent 45%);
+    width: 80px;
+    height: 80px;
+    background: radial-gradient(circle at 30% 28%, rgba(255, 255, 255, 0.28), transparent 62%);
+    filter: blur(2px);
     mix-blend-mode: screen;
     animation: coreRotate 17s linear infinite;
   }
@@ -571,7 +571,8 @@
     width: 60px;
     height: 60px;
     border-radius: 50%;
-    border: 2px solid #ff8c42;
+    border: 2.5px solid #ffe6bf;
+    box-shadow: 0 0 12px 2px #ffb347cc;
     transform: translate(-50%, -50%) scale(1);
     opacity: 0;
     pointer-events: none;
@@ -580,7 +581,7 @@
     animation: coreShockwave 0.55s ease-out 1;
   }
   @keyframes coreShockwave {
-    0% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.85; }
+    0% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.95; }
     100% { transform: translate(-50%, -50%) scale(2.8); opacity: 0; }
   }
 
@@ -750,9 +751,7 @@
       <svg class="map-lines" id="mapLines" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
       <div class="map-core-hit" id="mapCoreHit" tabindex="0" role="button" aria-label="Ядро JARVIS">
         <div class="map-core-wrap">
-          <div class="core-halo"></div>
-          <div class="core-mid"></div>
-          <div class="core-inner"></div>
+          <div class="core-glow"></div>
           <div class="core-shine"></div>
         </div>
         <div class="core-shockwave" id="coreShockwave"></div>
