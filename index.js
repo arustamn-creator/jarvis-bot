@@ -36,6 +36,30 @@ bot.on('polling_error', (err) => {
   console.error('[Джарвис] Ошибка поллинга:', err.message);
 });
 
+// Поллинг умеет умирать молча: после 409 (перекрытие контейнеров при деплое)
+// или полуоткрытого сокета цикл getUpdates останавливается без единой ошибки —
+// процесс жив, HTTP отвечает, а сообщения копятся в очереди Telegram
+// (16.07: pending_update_count=3 при «живом» боте). Сторож раз в минуту
+// сверяет очередь: апдейты есть, а поллинг молчит — перезапуск поллинга.
+let lastUpdateAt = Date.now();
+bot.on('message', () => { lastUpdateAt = Date.now(); });
+
+const POLL_WATCHDOG_MS = 60 * 1000;
+setInterval(async () => {
+  try {
+    const info = await bot.getWebHookInfo();
+    const pending = info.pending_update_count || 0;
+    if (pending > 0 && Date.now() - lastUpdateAt > POLL_WATCHDOG_MS) {
+      console.warn(`[watchdog] В очереди ${pending} апдейтов, поллинг молчит — перезапускаю поллинг`);
+      await bot.stopPolling().catch(() => {});
+      await bot.startPolling();
+      lastUpdateAt = Date.now();
+    }
+  } catch (err) {
+    console.error('[watchdog] Ошибка проверки поллинга:', err.message);
+  }
+}, POLL_WATCHDOG_MS);
+
 process.on('SIGTERM', async () => {
   console.log('[Джарвис] SIGTERM — останавливаю поллинг...');
   await bot.stopPolling();
