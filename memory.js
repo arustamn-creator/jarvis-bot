@@ -23,7 +23,14 @@ async function getHistory(chatId, limit = 20) {
         .eq('chat_id', String(chatId))
         .order('created_at', { ascending: false })
         .limit(limit);
-    return (data || []).reverse();
+    const history = (data || []).reverse();
+    // Anthropic требует, чтобы первая запись была от user — срез по limit
+    // может отрезать user-половину старейшей пары, и тогда каждый запрос
+    // падал бы с 400 и уходил в Groq-fallback.
+    while (history.length && history[0].role !== 'user') {
+        history.shift();
+    }
+    return history;
 }
 
 // Очистить историю чата

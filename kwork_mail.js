@@ -22,7 +22,21 @@ function createClient() {
       pass: process.env.GMAIL_APP_PASSWORD,
     },
     logger: false,
+    // Соединения здесь короткоживущие (fetch/markSeen и сразу logout).
+    // Без socketTimeout полумёртвый сокет Gmail подвешивает fetch/logout
+    // навсегда — та же болезнь, что была у client.idle() в index.js.
+    socketTimeout: 60 * 1000,
   });
+}
+
+// logout() шлёт команду по сокету — на мёртвом соединении может зависнуть
+// или бросить; close() рвёт сокет локально и не ждёт ответа сервера.
+async function safeLogout(client) {
+  try {
+    await client.logout();
+  } catch (_) {
+    client.close();
+  }
 }
 
 async function fetchUnseenKworkEmails() {
@@ -53,7 +67,7 @@ async function fetchUnseenKworkEmails() {
       lock.release();
     }
   } finally {
-    await client.logout();
+    await safeLogout(client);
   }
   return emails;
 }
@@ -73,7 +87,7 @@ async function markSeen(uid) {
       lock.release();
     }
   } finally {
-    await client.logout();
+    await safeLogout(client);
   }
 }
 

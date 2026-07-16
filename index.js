@@ -230,7 +230,9 @@ bot.onText(/\/kwork_check/, async (msg) => {
     }
   } catch (err) {
     console.error('[kwork_check]', err);
-    await bot.sendMessage(chatId, `❌ Ошибка проверки: ${err.message}`);
+    // Отправка сообщения об ошибке сама может упасть (сеть) — не даём
+    // reject'у дойти до unhandledRejection и уронить процесс.
+    await bot.sendMessage(chatId, `❌ Ошибка проверки: ${err.message}`).catch(() => {});
   }
 });
 
@@ -344,7 +346,19 @@ function cleanupFiles(...files) {
 
 // === Команды ===
 
-bot.onText(/\/start/, async (msg) => {
+// Любой reject в async-хэндлере команды = unhandledRejection = exit(1) для
+// всего процесса (см. обработчик наверху) — поэтому команды всегда в обёртке.
+function safeHandler(label, handler) {
+  return async (msg) => {
+    try {
+      await handler(msg);
+    } catch (err) {
+      console.error(`[${label}] Ошибка:`, err.message);
+    }
+  };
+}
+
+bot.onText(/\/start/, safeHandler('start', async (msg) => {
   await bot.sendMessage(
     msg.chat.id,
     '👋 Привет! Я *Jarvis* — ваш умный ИИ-ассистент.\n\n' +
@@ -355,9 +369,9 @@ bot.onText(/\/start/, async (msg) => {
     '/help — помощь',
     { parse_mode: 'Markdown' }
   );
-});
+}));
 
-bot.onText(/\/help/, async (msg) => {
+bot.onText(/\/help/, safeHandler('help', async (msg) => {
   await bot.sendMessage(
     msg.chat.id,
     '*Jarvis Bot — справка*\n\n' +
@@ -369,14 +383,14 @@ bot.onText(/\/help/, async (msg) => {
     'Просто напишите или скажите что-нибудь!',
     { parse_mode: 'Markdown' }
   );
-});
+}));
 
-bot.onText(/\/clear/, async (msg) => {
+bot.onText(/\/clear/, safeHandler('clear', async (msg) => {
   const chatId = msg.chat.id;
   const { clearHistory } = require('./memory');
   await clearHistory(chatId);
   await bot.sendMessage(chatId, '🗑️ История разговора очищена.');
-});
+}));
 
 // === Текстовые сообщения ===
 
@@ -392,7 +406,7 @@ bot.on('message', async (msg) => {
     await bot.sendMessage(chatId, reply);
   } catch (err) {
     console.error('[text] Полная ошибка:', err);
-    await bot.sendMessage(chatId, `❌ Ошибка: ${err.message}`);
+    await bot.sendMessage(chatId, `❌ Ошибка: ${err.message}`).catch(() => {});
   }
 });
 
@@ -456,7 +470,7 @@ bot.on('voice', async (msg) => {
       console.error('[voice] Groq API ответ:', JSON.stringify({ status: err.status, error: err.error }));
     }
     agentRegistry.recordError('voice-pipeline', err);
-    await bot.sendMessage(chatId, `❌ Ошибка при обработке голосового сообщения: ${err.message}`);
+    await bot.sendMessage(chatId, `❌ Ошибка при обработке голосового сообщения: ${err.message}`).catch(() => {});
   } finally {
     cleanupFiles(oggPath, mp3Path);
   }
