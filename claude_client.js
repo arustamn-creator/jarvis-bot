@@ -26,8 +26,12 @@ function getGroqClient() {
 const llmEvents = new EventEmitter();
 
 async function callAnthropic({ system, messages, maxTokens }) {
+  // Без signal зависший apinet.cloud (TCP-дроп без ответа) подвешивает fetch
+  // навсегда: за ним молча встают и ответы в чате, и kwork-ранжирование,
+  // и Groq-fallback никогда не срабатывает.
   const res = await fetch('https://apinet.cloud/v1/messages', {
     method: 'POST',
+    signal: AbortSignal.timeout(90 * 1000),
     headers: {
       'x-api-key': process.env.ANTHROPIC_API_KEY,
       'anthropic-version': '2023-06-01',
