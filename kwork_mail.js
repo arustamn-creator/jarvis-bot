@@ -51,8 +51,17 @@ async function fetchUnseenKworkEmails() {
   try {
     const lock = await client.getMailboxLock('INBOX');
     try {
+      console.log('[kwork mail] Подключён, ищу непрочитанные письма...');
       const criteria = buildKworkSearchCriteria();
+      // Сначала выкачиваем сырые письма, парсим после освобождения соединения:
+      // await долгой операции внутри for-await по client.fetch() может
+      // застопорить поток IMAP-ответов и подвесить цикл навсегда.
+      const raw = [];
       for await (const message of client.fetch(criteria, { uid: true, source: true })) {
+        raw.push({ uid: message.uid, source: message.source });
+      }
+      console.log(`[kwork mail] Скачано писем: ${raw.length}, парсинг...`);
+      for (const message of raw) {
         const parsed = await simpleParser(message.source);
         emails.push({
           uid: message.uid,

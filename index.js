@@ -142,6 +142,27 @@ async function checkKworkOrders(notifyChatId) {
 }
 
 const IDLE_TIMEOUT_MS = 20 * 60 * 1000;
+const CHECK_TIMEOUT_MS = 5 * 60 * 1000;
+
+// Сторож на всю проверку почты: 16.07 конвейер завис молча внутри IMAP-выборки
+// на 20+ минут без единой ошибки — IDLE-цикл стоял, мониторинг был мёртв.
+// Таймаут превращает любое такое зависание в ошибку → catch → переподключение.
+async function checkWithTimeout(notifyChatId) {
+  let timer;
+  try {
+    return await Promise.race([
+      checkKworkOrders(notifyChatId),
+      new Promise((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`kwork check timeout — проверка не уложилась в ${CHECK_TIMEOUT_MS / 60000} мин`)),
+          CHECK_TIMEOUT_MS
+        );
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 // client.idle() has no built-in timeout — a half-open TCP socket (Gmail drops
 // idle IMAP connections silently sometimes) leaves it pending forever with no
@@ -187,7 +208,7 @@ async function startKworkImapIdle(notifyChatId) {
       const lock = await client.getMailboxLock('INBOX');
       try {
         console.log('[kwork IDLE] Подключён, начальная проверка почты...');
-        await checkKworkOrders(notifyChatId);
+        await checkWithTimeout(notifyChatId);
         while (true) {
           await idleWithTimeout(client, IDLE_TIMEOUT_MS);
           // Gmail шлёт по IDLE не только реальные новые письма, но и keepalive/
@@ -196,7 +217,7 @@ async function startKworkImapIdle(notifyChatId) {
           // выжигало лимит IMAP-запросов и раз в 10-20 мин рвало соединение.
           if (!hasNewMail) continue;
           hasNewMail = false;
-          await checkKworkOrders(notifyChatId);
+          await checkWithTimeout(notifyChatId);
         }
       } finally {
         lock.release();
