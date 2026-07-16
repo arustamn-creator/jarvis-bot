@@ -24,45 +24,19 @@ const { markSeen } = require('./kwork_mail');
 const { loadState, saveState } = require('./kwork_state');
 const { buildKworkDigest } = require('./kwork_digest');
 const agentRegistry = require('./agent_registry');
-// node-telegram-bot-api's internal HTTP client (request, forever-agent) has no
-// timeout by default — a half-open socket (e.g. mid setWebHook-clear-on-409
-// retry) hangs the request forever, so the polling loop's own reschedule
-// never fires again and the bot goes silently unresponsive with no restart.
+// Webhook вместо поллинга. Поллинг на Railway умирал при КАЖДОМ деплое:
+// контейнеры перекрываются, новый ловит 409 от getUpdates старого, его цикл
+// поллинга молча останавливается навсегда, затем старый контейнер убивают —
+// и сообщения копятся в очереди Telegram при «живом» боте (дважды за 16.07).
+// С webhook Telegram сам доставляет апдейты на публичный домен — перекрытие
+// контейнеров безвредно, класса «мёртвый getUpdates» больше не существует.
 const bot = new TelegramBot(process.env.TELEGRAM_TOKEN, {
-  polling: true,
+  polling: false,
   request: { timeout: 15000 },
 });
-bot.on('polling_error', (err) => {
-  console.error('[Джарвис] Ошибка поллинга:', err.message);
-});
 
-// Поллинг умеет умирать молча: после 409 (перекрытие контейнеров при деплое)
-// или полуоткрытого сокета цикл getUpdates останавливается без единой ошибки —
-// процесс жив, HTTP отвечает, а сообщения копятся в очереди Telegram
-// (16.07: pending_update_count=3 при «живом» боте). Сторож раз в минуту
-// сверяет очередь: апдейты есть, а поллинг молчит — перезапуск поллинга.
-let lastUpdateAt = Date.now();
-bot.on('message', () => { lastUpdateAt = Date.now(); });
-
-const POLL_WATCHDOG_MS = 60 * 1000;
-setInterval(async () => {
-  try {
-    const info = await bot.getWebHookInfo();
-    const pending = info.pending_update_count || 0;
-    if (pending > 0 && Date.now() - lastUpdateAt > POLL_WATCHDOG_MS) {
-      console.warn(`[watchdog] В очереди ${pending} апдейтов, поллинг молчит — перезапускаю поллинг`);
-      await bot.stopPolling().catch(() => {});
-      await bot.startPolling();
-      lastUpdateAt = Date.now();
-    }
-  } catch (err) {
-    console.error('[watchdog] Ошибка проверки поллинга:', err.message);
-  }
-}, POLL_WATCHDOG_MS);
-
-process.on('SIGTERM', async () => {
-  console.log('[Джарвис] SIGTERM — останавливаю поллинг...');
-  await bot.stopPolling();
+process.on('SIGTERM', () => {
+  console.log('[Джарвис] SIGTERM — завершаюсь...');
   process.exit(0);
 });
 
@@ -586,9 +560,38 @@ api.get('/dashboard', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
+// === Telegram webhook ===
+// Секрет пути выводится из токена — путь неугадываем без токена, плюс
+// Telegram подписывает каждый запрос заголовком secret_token.
+const WEBHOOK_SECRET = crypto
+  .createHash('sha256')
+  .update(process.env.TELEGRAM_TOKEN || '')
+  .digest('hex')
+  .slice(0, 32);
+
+api.post(`/telegram/${WEBHOOK_SECRET}`, (req, res) => {
+  if (req.headers['x-telegram-bot-api-secret-token'] !== WEBHOOK_SECRET) {
+    return res.sendStatus(401);
+  }
+  bot.processUpdate(req.body);
+  res.sendStatus(200);
+});
+
+async function registerWebhook() {
+  const domain = process.env.RAILWAY_PUBLIC_DOMAIN || 'jarvis-bot-production-90c2.up.railway.app';
+  const url = `https://${domain}/telegram/${WEBHOOK_SECRET}`;
+  await bot.setWebHook(url, { secret_token: WEBHOOK_SECRET, drop_pending_updates: false });
+  console.log('[Джарвис] Webhook установлен:', `https://${domain}/telegram/<secret>`);
+}
+
 const PORT = process.env.PORT || 3000;
 api.listen(PORT, () => {
   console.log(`[Джарвис] HTTP API слушает порт ${PORT}`);
+  registerWebhook().catch((err) => {
+    console.error('[Джарвис] Не удалось установить webhook:', err.message);
+    // Без webhook бот глух — это фатально, пусть Railway перезапустит.
+    process.exit(1);
+  });
 });
 
 // === Запуск ===
