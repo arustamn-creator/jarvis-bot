@@ -1,0 +1,12 @@
+﻿{
+  "mcpServers": {
+    "stitch": {
+      "command": "node",
+      "args": ["--use-system-ca", "mcp-servers/stitch-mcp-server.js"],
+      "env": {
+        "GOOGLE_CLOUD_PROJECT": "stitch-jarvis",
+        "GOOGLE_APPLICATION_CREDENTIALS": "./service-account.json"
+      }
+    }
+  }
+}

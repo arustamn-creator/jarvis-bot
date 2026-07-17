@@ -4,3 +4,4 @@ tmp/
 *.ogg
 *.mp3
 *.wav
+service-account.json

@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+
+<html class="scroll-smooth" lang="ru"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ОЧАГ — Традиционная самса на дровах</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;700;900&amp;family=Work+Sans:wght@400;500&amp;family=Playfair+Display:wght@700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#B8842E",
+                        secondary: "#9A5420",
+                        accent: "#ABB0B6",
+                        surface: "#18191B",
+                        surfaceRaised: "#232427",
+                        surfaceElevated: "#1D1E20",
+                        ink: "#16171A",
+                        paper: "#EDEEF0",
+                    },
+                    fontFamily: {
+                        headline: ["Playfair Display", "serif"],
+                        display: ["Public Sans", "sans-serif"],
+                        body: ["Work Sans", "sans-serif"],
+                        label: ["Public Sans", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "full": "9999px"
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .ember-glow {
+            background:
+                radial-gradient(ellipse 60% 50% at 30% 100%, rgba(184, 132, 46, 0.16) 0%, rgba(184, 132, 46, 0) 70%),
+                radial-gradient(ellipse 40% 40% at 80% 20%, rgba(154, 84, 32, 0.10) 0%, rgba(154, 84, 32, 0) 70%);
+        }
+        .fire-gradient {
+            background: linear-gradient(to bottom, rgba(184, 132, 46, 0) 0%, rgba(184, 132, 46, 0.08) 100%);
+        }
+        @keyframes ember-flicker {
+            0%, 100% { box-shadow: 0 0 10px 1px rgba(184, 132, 46, 0.45), inset 0 0 6px rgba(210, 150, 80, 0.25); }
+            50% { box-shadow: 0 0 18px 4px rgba(184, 132, 46, 0.7), inset 0 0 10px rgba(210, 150, 80, 0.4); }
+        }
+        .ember-btn {
+            background: radial-gradient(circle at 35% 30%, #D6A24E 0%, #B8842E 45%, #7A3E14 100%);
+            animation: ember-flicker 2.4s ease-in-out infinite;
+        }
+        .ember-btn:hover {
+            animation-duration: 1s;
+        }
+        .ember-coal-btn {
+            width: 3.5rem;
+            height: 3.5rem;
+            border-radius: 42% 58% 53% 47% / 57% 44% 56% 43%;
+            background: radial-gradient(circle at 38% 32%, #3D2313 0%, #241309 55%, #140B06 100%);
+            border: 1px solid rgba(184, 132, 46, 0.35);
+            animation: ember-flicker 2.4s ease-in-out infinite;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s, border-radius 0.6s;
+        }
+        .ember-coal-btn:hover {
+            animation-duration: 0.9s;
+            border-color: rgba(184, 132, 46, 0.7);
+            border-radius: 58% 42% 47% 53% / 43% 56% 44% 57%;
+        }
+    </style>
+</head>
+<body class="bg-surface text-paper font-body selection:bg-primary selection:text-ink">
+<!-- Top Navigation Bar -->
+<header class="fixed top-0 left-0 right-0 z-50 bg-surface/90 backdrop-blur-md shadow-sm border-b border-primary/10">
+<nav class="flex justify-between items-center w-full px-6 py-4 max-w-7xl mx-auto">
+<div class="font-headline text-2xl font-black text-primary tracking-tight">ОЧАГ</div>
+<!-- Desktop Nav -->
+<ul class="hidden md:flex gap-8 items-center">
+<li><a class="font-body text-body-md text-accent hover:text-primary transition-colors" href="#traditions">Традиции</a></li>
+<li><a class="font-body text-body-md text-primary border-b-2 border-primary pb-1" href="#menu">Наше меню</a></li>
+<li><a class="font-body text-body-md text-accent hover:text-primary transition-colors" href="#reviews">Отзывы</a></li>
+<li><a class="font-body text-body-md text-accent hover:text-primary transition-colors" href="#contacts">Контакты</a></li>
+</ul>
+<button class="bg-primary text-ink px-6 py-2 rounded-full font-bold hover:opacity-80 transition-all active:scale-95">
+                Заказать
+            </button>
+</nav>
+</header>
+<main>
+<!-- Hero Section -->
+<section class="relative min-h-screen flex items-center pt-20 overflow-hidden">
+<div class="absolute inset-0 bg-surface ember-glow"></div>
+<div class="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-12 items-center relative z-10">
+<div class="space-y-8">
+<div class="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-primary/10 text-primary font-bold text-sm">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">local_fire_department</span>
+                        Свежее из тандыра
+                    </div>
+<h1 class="font-headline text-4xl sm:text-5xl md:text-7xl font-black text-primary leading-[1.1]">
+                        Самса из дровяного тандыра — <span class="italic text-secondary">горячая, сочная, твоя</span>
+</h1>
+<p class="text-xl text-accent font-medium leading-relaxed max-w-lg">
+                        Традиционный вкус домашней выпечки, приготовленной на живом огне по старинным рецептам.
+                    </p>
+<div class="flex flex-wrap gap-4">
+<a class="flex items-center gap-3 bg-primary text-ink px-8 py-4 rounded-xl font-bold text-lg shadow-lg shadow-primary/30 hover:scale-105 transition-transform duration-300" href="https://t.me/">
+<span class="material-symbols-outlined">send</span>
+                            Заказать в Telegram
+                        </a>
+<a class="flex items-center gap-3 border-2 border-accent text-accent px-8 py-4 rounded-xl font-bold text-lg hover:bg-accent/10 transition-colors" href="#menu">
+                            Смотреть меню
+                        </a>
+</div>
+</div>
+<div class="relative group">
+<div class="absolute -inset-4 bg-secondary/20 rounded-full blur-3xl group-hover:bg-primary/20 transition-colors duration-500"></div>
+<div class="relative rounded-3xl overflow-hidden aspect-square shadow-2xl transform rotate-2 hover:rotate-0 transition-transform duration-700">
+<img class="w-full h-full object-cover" data-alt="Close-up artistic food photography of golden crispy samsa pastries inside a stone wood-fired tandoor oven. Glowing orange embers and soft smoke rise from the bottom, creating a warm, cozy atmosphere. High-end food styling with warm lighting hitting the flaky layers of dough. Soft bokeh background of a rustic traditional kitchen with wooden surfaces and clay pots. Professional editorial style for a premium food brand." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAmuu2ttqTXLc1u47BVAArpUfEPUHfmfPjBVSNVSbhbzNGx7TM4AoH8tUs_ovHJsvdRpfw8DYJE0NhG0MsUNYTQ22YGNocm70Pvs-A5lsUoLzNSWGC7d_D4Xruq4Vo_WXYzTeDCF53WXH-KAGTNZG4uyNBjTivFKzotPV-tRcBxtW_GdKch2u_oaMhkd-OxVfWl9Yz2NN7IV07pZts17ShmU7UWrAWmbF4wv2vwrab0hEGSE-eZx2Kkzu2J7RtwxsD4QK9S-Ngi0eCm5A"/>
+<div class="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-black/60 to-transparent">
+<p class="text-white font-headline text-2xl">Ручная работа</p>
+<p class="text-white/80">Готовим с любовью с 6:00 утра</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Trust Block (Bento Style) -->
+<section class="py-24 bg-surfaceRaised/40 backdrop-blur-sm" id="traditions">
+<div class="max-w-7xl mx-auto px-6">
+<div class="text-center mb-16">
+<h2 class="font-headline text-4xl md:text-5xl font-bold text-primary mb-4">Секреты нашего Очага</h2>
+<div class="h-1 w-24 bg-secondary mx-auto rounded-full"></div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+<!-- Feature 1 -->
+<div class="bg-surfaceRaised p-8 rounded-3xl border border-primary/10 hover:shadow-xl hover:shadow-primary/5 transition-shadow group">
+<div class="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mb-6 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-4xl">fireplace</span>
+</div>
+<h3 class="font-headline text-xl font-bold mb-3 text-paper">Дровяной тандыр</h3>
+<p class="text-accent/80 text-sm leading-relaxed">
+                            Используем только натуральные дрова плодовых деревьев для того самого аромата дымка.
+                        </p>
+</div>
+<!-- Feature 2 -->
+<div class="bg-surfaceRaised p-8 rounded-3xl border border-primary/10 hover:shadow-xl hover:shadow-primary/5 transition-shadow group">
+<div class="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mb-6 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-4xl">eco</span>
+</div>
+<h3 class="font-headline text-xl font-bold mb-3 text-paper">Фермерское мясо</h3>
+<p class="text-accent/80 text-sm leading-relaxed">
+                            Ежедневные поставки свежего халяльного мяса от местных фермерских хозяйств.
+                        </p>
+</div>
+<!-- Feature 3 -->
+<div class="bg-surfaceRaised p-8 rounded-3xl border border-primary/10 hover:shadow-xl hover:shadow-primary/5 transition-shadow group">
+<div class="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mb-6 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-4xl">visibility</span>
+</div>
+<h3 class="font-headline text-xl font-bold mb-3 text-paper">Готовим при вас</h3>
+<p class="text-accent/80 text-sm leading-relaxed">
+                            Никаких заготовок «вчерашнего дня». Процесс лепки и выпекания открыт для вашего взгляда.
+                        </p>
+</div>
+<!-- Feature 4 -->
+<div class="bg-surfaceRaised p-8 rounded-3xl border border-primary/10 hover:shadow-xl hover:shadow-primary/5 transition-shadow group">
+<div class="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mb-6 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-4xl" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+<h3 class="font-headline text-xl font-bold mb-3 text-paper">Сотни гостей</h3>
+<div class="flex text-secondary mb-2">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+<p class="text-accent/80 text-sm leading-relaxed">
+                            Наши клиенты возвращаются снова и снова за тем самым вкусом детства.
+                        </p>
+</div>
+</div>
+</div>
+</section>
+<!-- Menu Section -->
+<section class="py-24 relative overflow-hidden" id="menu">
+<div class="max-w-7xl mx-auto px-6 relative z-10">
+<div class="flex justify-between items-end mb-16">
+<div>
+<h2 class="font-headline text-4xl md:text-5xl font-bold text-primary mb-4">Наше меню</h2>
+<p class="text-accent max-w-md">Тщательно отобранные начинки в хрустящем слоеном тесте. Выберите свою любимую.</p>
+</div>
+<div class="hidden md:flex gap-6">
+<button aria-label="Предыдущие" class="ember-coal-btn hover:scale-110 transition-transform">
+<svg class="w-9 h-9" style="transform: scaleX(-1);" viewbox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<lineargradient id="flameGradA" x1="100%" x2="10%" y1="50%" y2="50%">
+<stop offset="0%" stop-color="#F0C878"></stop>
+<stop offset="40%" stop-color="#B8842E"></stop>
+<stop offset="100%" stop-color="#5C2D0E"></stop>
+</lineargradient>
+</defs>
+<path d="M80,50 L26,18 Q34,26 22,31 Q36,38 24,44 L26,50 L24,56 Q36,62 22,69 Q34,74 26,82 Z" fill="url(#flameGradA)"></path>
+</svg>
+</button>
+<button aria-label="Следующие" class="ember-coal-btn hover:scale-110 transition-transform">
+<svg class="w-9 h-9" viewbox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<lineargradient id="flameGradB" x1="100%" x2="10%" y1="50%" y2="50%">
+<stop offset="0%" stop-color="#F0C878"></stop>
+<stop offset="40%" stop-color="#B8842E"></stop>
+<stop offset="100%" stop-color="#5C2D0E"></stop>
+</lineargradient>
+</defs>
+<path d="M80,50 L26,18 Q34,26 22,31 Q36,38 24,44 L26,50 L24,56 Q36,62 22,69 Q34,74 26,82 Z" fill="url(#flameGradB)"></path>
+</svg>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+<!-- Menu Item 1 -->
+<div class="bg-surfaceRaised rounded-3xl overflow-hidden shadow-sm border border-primary/10 hover:shadow-xl hover:shadow-primary/10 transition-all group flex flex-col">
+<div class="h-48 overflow-hidden relative">
+<img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" data-alt="Close-up of a traditional mutton lamb samsa pastry with black sesame seeds on top. The crust is multi-layered and golden-brown. Fresh steam rising. Warm wood-fire background. Professional food photography, high contrast, warm terracotta color grading." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDjRspj2cCwBkK75476APWp9mz3U4qjWvG-FJOz6OxoTCYX-KGbwLP-ETNR_FH8QTQSbZRdoxr9kY-bJxKTmUTlgSSqWUf4ZcJg7kCWBOnKt5fEqZhxaT1eHQbrx16pRD9pKQH9p0ez7oKzY49Wk3RIMQLq33xuOPUZAPNFxMiE3B20Kw1ypWXuAE8emcr05K6nJMM2rL3UqEfTTAKv_QAodY0UV014gnKoFnTaFvFis_jRcwkBhutPcJMnS3g0HIk8OWCdwEm5GSauNA"/>
+<span class="absolute top-4 left-4 bg-primary text-ink text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Хит</span>
+</div>
+<div class="p-6 flex flex-col flex-grow">
+<h3 class="font-headline text-xl font-bold text-paper mb-2">С бараниной</h3>
+<p class="text-sm text-accent/70 mb-6 flex-grow">Сочная рубленая баранина с курдюком, ароматным луком и зирой.</p>
+<div class="flex items-center justify-between mt-auto">
+<span class="text-2xl font-black text-primary">180₽</span>
+<button class="w-10 h-10 bg-surface rounded-full flex items-center justify-center text-primary hover:bg-primary hover:text-ink transition-all">
+<span class="material-symbols-outlined">add</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Menu Item 2 -->
+<div class="bg-surfaceRaised rounded-3xl overflow-hidden shadow-sm border border-primary/10 hover:shadow-xl hover:shadow-primary/10 transition-all group flex flex-col">
+<div class="h-48 overflow-hidden relative">
+<img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" data-alt="Traditional beef samsa with golden flaky crust and white sesame seeds. Artistic layout on a wooden cutting board with spices. Warm atmospheric lighting resembling a fireplace glow. Rich textures of the dough visible. Premium food shot." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDTdpfPHbFT862j6j9DwYhIVSZnBxyCknJoFsDjPxNSwQOEx24aWHyR5m9hxMTgdsQVDY1CgST5m5h5Gozdp2nH_4gdgkcnPLLin3ZW2cKv9eO4EfGeoi0gLvVlJ7ScBpxlZmWyiPcWpM8fl1qiTSTIvGgFbdATer3eJPp50fpibTbWtZkqjZ1eeQL85ti7SejSawIOqPi0o4A0uRJ2INi0XeS74kRme9xFfkzVaCpTY8ePBZSiPhNa9qXHCfLxXWhqPnSyIINBnNxk0A"/>
+</div>
+<div class="p-6 flex flex-col flex-grow">
+<h3 class="font-headline text-xl font-bold text-paper mb-2">С говядиной</h3>
+<p class="text-sm text-accent/70 mb-6 flex-grow">Нежная говядина, много лука и традиционный набор специй.</p>
+<div class="flex items-center justify-between mt-auto">
+<span class="text-2xl font-black text-primary">160₽</span>
+<button class="w-10 h-10 bg-surface rounded-full flex items-center justify-center text-primary hover:bg-primary hover:text-ink transition-all">
+<span class="material-symbols-outlined">add</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Menu Item 3 -->
+<div class="bg-surfaceRaised rounded-3xl overflow-hidden shadow-sm border border-primary/10 hover:shadow-xl hover:shadow-primary/10 transition-all group flex flex-col">
+<div class="h-48 overflow-hidden relative">
+<img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" data-alt="Samsa with chicken and fresh green herbs. The pastry is triangular and perfectly baked with a glossy egg wash finish. Garnished with fresh greens on the side. High-key warm lighting, clean and appetizing presentation. Soft natural shadows." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCGnW5xX4qyM-KnQwmSLeYsenQyPcCNEec4mrrwLAWMXrTuKSpiRxPdAD8KuL5-iSJzn2E2w5fFGbEwGknb7MNkDAaOurZZot0cMDrGqCsS_-FryTX7LY7tBhQVlarotmYG-hXcLQhJlbk3j-HDL5SKZflueGh5ka_szu5hYJm77z5eUVEb4LkSKwPG7R23dvqPpRrMqFJTqXQ8idFyUVthzoS27EGlmxluLSVdLsjjaMYo_WpDejMfdj5CanED-s-sS-22BhLb_efkZQ"/>
+</div>
+<div class="p-6 flex flex-col flex-grow">
+<h3 class="font-headline text-xl font-bold text-paper mb-2">Курица и зелень</h3>
+<p class="text-sm text-accent/70 mb-6 flex-grow">Диетическое филе цыпленка с добавлением свежего укропа и кинзы.</p>
+<div class="flex items-center justify-between mt-auto">
+<span class="text-2xl font-black text-primary">150₽</span>
+<button class="w-10 h-10 bg-surface rounded-full flex items-center justify-center text-primary hover:bg-primary hover:text-ink transition-all">
+<span class="material-symbols-outlined">add</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Menu Item 4 -->
+<div class="bg-surfaceRaised rounded-3xl overflow-hidden shadow-sm border border-primary/10 hover:shadow-xl hover:shadow-primary/10 transition-all group flex flex-col">
+<div class="h-48 overflow-hidden relative">
+<img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" data-alt="Traditional pumpkin samsa, slightly sweet and savory. The crust is golden with a slight orange tint. Atmospheric composition with raw pumpkin slices and cinnamon sticks in the background. Warm autumn vibes, soft golden hour lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDnDXY3OZExGfBL521IV8dOH3g27pSeVHU0zfl6gIkQGyfMAnaoMU1Cs82ffxIQb9q2ZtwZFEMdmjrBRJihi3BZU-lOm8ct_5j9CxTsiEIU_JmU0aiOoez7UXT5oaF9aQ7Ga7e1NTxhR0F2SZ0_q4r1r4RLfoNcbma-2T9jZW5igyqI3qMA1R2IVhouNAxJkfX-dj-oA1_7OBBFVp8S5svqgVjK0UwsOjTtBybklBGfMj3brBW_gX_Vmp98Q1gX1uYIviROcaSMPkE9FQ"/>
+</div>
+<div class="p-6 flex flex-col flex-grow">
+<h3 class="font-headline text-xl font-bold text-paper mb-2">С тыквой</h3>
+<p class="text-sm text-accent/70 mb-6 flex-grow">Сладкая осенняя тыква с ароматными специями. Идеально для вегетарианцев.</p>
+<div class="flex items-center justify-between mt-auto">
+<span class="text-2xl font-black text-primary">130₽</span>
+<button class="w-10 h-10 bg-surface rounded-full flex items-center justify-center text-primary hover:bg-primary hover:text-ink transition-all">
+<span class="material-symbols-outlined">add</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Menu Item 5 -->
+<div class="bg-surfaceRaised rounded-3xl overflow-hidden shadow-sm border border-primary/10 hover:shadow-xl hover:shadow-primary/10 transition-all group flex flex-col">
+<div class="h-48 overflow-hidden relative">
+<img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" data-alt="Cheese samsa with melting cheese visible from a small bite. Extremely flaky golden crust. Soft studio lighting with a warm cream and orange palette. Rustic and cozy feel. Focus on the gooey texture of the cheese filling." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCC4m1fDK49h8FI2c80b1a519SsW7cvMxiLuPeby1ckAxoGICAiDT2hJxk7JZk6BWTc8dVSbLEzcQdjlPpOzAMz_5NGEpMe_TQ-Vz7ByHH7TQeoIrwKLJjRq_DaSa8tV0-D2YHpDLyBngAkDyasuZy52F4WP0JpJMWtotk0YxoqyEP1LVenpI82iZxJv-uH17M6ncVCUuTrug5PUOqVbfUncp2qz1uvC5la81_rjsVfm3DoVEkfsvnd_DoOksyAtQWRzfp9xdCJA4pMYA"/>
+<span class="absolute top-4 left-4 bg-secondary text-ink text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Новинка</span>
+</div>
+<div class="p-6 flex flex-col flex-grow">
+<h3 class="font-headline text-xl font-bold text-paper mb-2">С сыром</h3>
+<p class="text-sm text-accent/70 mb-6 flex-grow">Микс тягучего сулугуни и нежной моцареллы в хрустящей оболочке.</p>
+<div class="flex items-center justify-between mt-auto">
+<span class="text-2xl font-black text-primary">150₽</span>
+<button class="w-10 h-10 bg-surface rounded-full flex items-center justify-center text-primary hover:bg-primary hover:text-ink transition-all">
+<span class="material-symbols-outlined">add</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Closing CTA & Contact Section -->
+<section class="py-24 bg-surfaceElevated text-paper relative overflow-hidden" id="contacts">
+<div class="absolute top-0 left-0 w-full h-full opacity-60 ember-glow pointer-events-none"></div>
+<div class="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-16 items-center relative z-10">
+<div>
+<h2 class="font-headline text-5xl font-black mb-6 leading-tight text-primary">Ждем вас за горячей самсой!</h2>
+<p class="text-xl mb-10 opacity-80 max-w-md">
+                        Приходите в наш уютный уголок или закажите доставку через наш Telegram-бот. Мы готовим до последнего гостя!
+                    </p>
+<div class="space-y-6 mb-12">
+<div class="flex items-start gap-4">
+<div class="w-12 h-12 rounded-xl bg-paper/10 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined">location_on</span>
+</div>
+<div>
+<h4 class="font-bold text-lg">Адрес</h4>
+<p class="opacity-70">ул. Традиционная, д. 15, Москва</p>
+</div>
+</div>
+<div class="flex items-start gap-4">
+<div class="w-12 h-12 rounded-xl bg-paper/10 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined">schedule</span>
+</div>
+<div>
+<h4 class="font-bold text-lg">Часы работы</h4>
+<p class="opacity-70">Ежедневно: 10:00 — 22:00</p>
+</div>
+</div>
+</div>
+<a class="inline-flex items-center gap-3 sm:gap-4 bg-primary text-ink px-6 py-4 sm:px-10 sm:py-5 rounded-2xl font-black text-base sm:text-xl whitespace-nowrap hover:scale-105 transition-transform shadow-lg shadow-primary/30" href="https://t.me/">
+<span class="material-symbols-outlined">chat</span>
+                        Написать в Telegram
+                    </a>
+</div>
+<div class="relative">
+<div class="rounded-3xl overflow-hidden h-[340px] md:h-[500px] shadow-2xl border border-primary/20">
+<iframe allowfullscreen="" height="100%" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=%D1%83%D0%BB.+%D0%A2%D1%80%D0%B0%D0%B4%D0%B8%D1%86%D0%B8%D0%BE%D0%BD%D0%BD%D0%B0%D1%8F+15%2C+%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&amp;output=embed" style="border:0; filter: invert(90%) hue-rotate(180deg) contrast(90%);" title="ОЧАГ на карте — ул. Традиционная, 15, Москва" width="100%"></iframe>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-surfaceElevated border-t border-primary/20">
+<div class="max-w-7xl mx-auto px-8 py-12 flex flex-col md:flex-row justify-between items-center gap-6">
+<div class="flex flex-col items-center md:items-start gap-2">
+<div class="font-headline text-xl font-bold text-paper">ОЧАГ</div>
+<p class="font-body text-label-md text-paper/60 text-center md:text-left max-w-xs">
+                    © 2024 ОЧАГ — Традиционная самса на дровах. Ручная работа.
+                </p>
+</div>
+<div class="flex gap-8">
+<a class="text-paper/80 hover:text-primary transition-colors font-body text-sm" href="#">Telegram</a>
+<a class="text-paper/80 hover:text-primary transition-colors font-body text-sm" href="#">WhatsApp</a>
+<a class="text-paper/80 hover:text-primary transition-colors font-body text-sm" href="#">Instagram</a>
+</div>
+<a class="text-paper/40 hover:text-paper transition-colors font-body text-xs" href="#">
+                Политика конфиденциальности
+            </a>
+</div>
+</footer>
+<!-- FAB for quick order on mobile -->
+<a class="ember-btn fixed bottom-6 right-6 z-50 md:hidden w-16 h-16 text-ink rounded-full flex items-center justify-center" href="https://t.me/">
+<span class="material-symbols-outlined text-3xl">shopping_cart</span>
+</a>
+<script>
+        // Simple scroll reveal or micro-interactions
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        // Sticky Header change on scroll
+        window.addEventListener('scroll', () => {
+            const header = document.querySelector('header');
+            if (window.scrollY > 50) {
+                header.classList.add('py-2', 'bg-surface/95');
+                header.classList.remove('py-4');
+            } else {
+                header.classList.remove('py-2', 'bg-surface/95');
+                header.classList.add('py-4');
+            }
+        });
+    </script>
+</body></html>
