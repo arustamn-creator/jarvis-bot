@@ -19,6 +19,7 @@ const { exec } = require('child_process');
 const { ImapFlow } = require('imapflow');
 const { saveMessage, getHistory } = require('./memory');
 const { addTask, listTasks, completeTaskByIndex } = require('./tasks');
+const { generateMarketingText } = require('./marketing');
 const { callClaude, llmEvents } = require('./claude_client');
 const { telegramLimiter } = require('./rate_limits');
 const { markSeen } = require('./kwork_mail');
@@ -448,6 +449,7 @@ bot.onText(/\/start/, safeHandler('start', async (msg) => {
     '/add <текст> — добавить задачу\n' +
     '/tasks — список задач\n' +
     '/done <номер> — отметить задачу выполненной\n' +
+    '/marketing <бриф> — сгенерировать текст (профиль/отклик/пост)\n' +
     '/help — помощь',
     { parse_mode: 'Markdown' }
   );
@@ -462,7 +464,8 @@ bot.onText(/\/help/, safeHandler('help', async (msg) => {
     '• Помогать с кодом, текстами, задачами\n' +
     '• Распознавать и понимать голосовые сообщения\n' +
     '• Запоминать контекст разговора\n' +
-    '• Вести список задач (/add, /tasks, /done)\n\n' +
+    '• Вести список задач (/add, /tasks, /done)\n' +
+    '• Генерировать маркетинговые тексты (/marketing)\n\n' +
     'Просто напишите или скажите что-нибудь!',
     { parse_mode: 'Markdown' }
   );
@@ -512,6 +515,24 @@ bot.onText(/^\/done(?:\s+(\d+))?$/, safeHandler('done', async (msg, match) => {
     return;
   }
   await bot.sendMessage(chatId, `✅ Готово: ${task.title}`);
+}));
+
+// === Маркетинговые материалы ===
+
+bot.onText(/^\/marketing(?:\s+([\s\S]+))?$/, safeHandler('marketing', async (msg, match) => {
+  const chatId = msg.chat.id;
+  const brief = match[1]?.trim();
+  if (!brief) {
+    await bot.sendMessage(
+      chatId,
+      'Использование: /marketing <бриф>\n\n' +
+      'Например: /marketing отклик на заявку fl.ru — клиенту нужен Telegram-бот для записи в салон красоты'
+    );
+    return;
+  }
+  await bot.sendChatAction(chatId, 'typing');
+  const text = await generateMarketingText(chatId, brief);
+  await sendLong(chatId, text);
 }));
 
 // === Текстовые сообщения ===

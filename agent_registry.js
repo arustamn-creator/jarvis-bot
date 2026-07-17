@@ -24,6 +24,12 @@ const AGENT_DEFS = {
     schedule: null,
     runnable: false,
   },
+  'marketing-generator': {
+    name: 'Marketing Generator',
+    description: 'Генерирует тексты профиля/откликов/постов под команду /marketing через Claude',
+    schedule: null,
+    runnable: false,
+  },
 };
 
 const state = new Map();
