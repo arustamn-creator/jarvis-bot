@@ -18,6 +18,7 @@ const path = require('path');
 const { exec } = require('child_process');
 const { ImapFlow } = require('imapflow');
 const { saveMessage, getHistory } = require('./memory');
+const { addTask, listTasks, completeTaskByIndex } = require('./tasks');
 const { callClaude, llmEvents } = require('./claude_client');
 const { telegramLimiter } = require('./rate_limits');
 const { markSeen } = require('./kwork_mail');
@@ -427,9 +428,9 @@ async function sendLong(chatId, text) {
 // Любой reject в async-хэндлере команды = unhandledRejection = exit(1) для
 // всего процесса (см. обработчик наверху) — поэтому команды всегда в обёртке.
 function safeHandler(label, handler) {
-  return async (msg) => {
+  return async (...args) => {
     try {
-      await handler(msg);
+      await handler(...args);
     } catch (err) {
       console.error(`[${label}] Ошибка:`, err.message);
     }
@@ -444,6 +445,9 @@ bot.onText(/\/start/, safeHandler('start', async (msg) => {
     '📋 Команды:\n' +
     '/start — приветствие\n' +
     '/clear — очистить историю разговора\n' +
+    '/add <текст> — добавить задачу\n' +
+    '/tasks — список задач\n' +
+    '/done <номер> — отметить задачу выполненной\n' +
     '/help — помощь',
     { parse_mode: 'Markdown' }
   );
@@ -457,7 +461,8 @@ bot.onText(/\/help/, safeHandler('help', async (msg) => {
     '• Отвечать на любые вопросы\n' +
     '• Помогать с кодом, текстами, задачами\n' +
     '• Распознавать и понимать голосовые сообщения\n' +
-    '• Запоминать контекст разговора\n\n' +
+    '• Запоминать контекст разговора\n' +
+    '• Вести список задач (/add, /tasks, /done)\n\n' +
     'Просто напишите или скажите что-нибудь!',
     { parse_mode: 'Markdown' }
   );
@@ -468,6 +473,45 @@ bot.onText(/\/clear/, safeHandler('clear', async (msg) => {
   const { clearHistory } = require('./memory');
   await clearHistory(chatId);
   await bot.sendMessage(chatId, '🗑️ История разговора очищена.');
+}));
+
+// === Задачи ===
+
+bot.onText(/^\/add(?:\s+([\s\S]+))?$/, safeHandler('add', async (msg, match) => {
+  const chatId = msg.chat.id;
+  const title = match[1]?.trim();
+  if (!title) {
+    await bot.sendMessage(chatId, 'Использование: /add <текст задачи>');
+    return;
+  }
+  await addTask(chatId, title);
+  await bot.sendMessage(chatId, `✅ Добавил в задачи: ${title}`);
+}));
+
+bot.onText(/^\/tasks$/, safeHandler('tasks', async (msg) => {
+  const chatId = msg.chat.id;
+  const pending = await listTasks(chatId, 'pending');
+  if (!pending.length) {
+    await bot.sendMessage(chatId, 'Задач нет 🎉');
+    return;
+  }
+  const lines = pending.map((t, i) => `${i + 1}. ${t.title}`);
+  await bot.sendMessage(chatId, `📋 Задачи:\n${lines.join('\n')}\n\nОтметить выполненной: /done <номер>`);
+}));
+
+bot.onText(/^\/done(?:\s+(\d+))?$/, safeHandler('done', async (msg, match) => {
+  const chatId = msg.chat.id;
+  const index = Number(match[1]);
+  if (!index) {
+    await bot.sendMessage(chatId, 'Использование: /done <номер из /tasks>');
+    return;
+  }
+  const task = await completeTaskByIndex(chatId, index);
+  if (!task) {
+    await bot.sendMessage(chatId, 'Нет задачи с таким номером. Посмотри /tasks.');
+    return;
+  }
+  await bot.sendMessage(chatId, `✅ Готово: ${task.title}`);
 }));
 
 // === Текстовые сообщения ===
