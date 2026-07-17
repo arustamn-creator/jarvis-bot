@@ -197,6 +197,12 @@ async function startKworkImapIdle(notifyChatId) {
         pass: process.env.GMAIL_APP_PASSWORD,
       },
       logger: false,
+      // Библиотека сама запускает IDLE при простое (autoidle). Если её IDLE
+      // уже идёт, наш client.idle() видит idling=true и возвращается МГНОВЕННО
+      // (imap-flow.js:2468) — цикл ниже превращается в бесконечный микротаск-
+      // спин, который душит весь event loop: ни таймеров, ни HTTP, ни логов
+      // (17.07: процесс завис на 9,5 часов). IDLE здесь только ручной.
+      disableAutoIdle: true,
     });
     let hasNewMail = false;
     let connectionDead = false;
@@ -207,8 +213,23 @@ async function startKworkImapIdle(notifyChatId) {
       try {
         console.log('[kwork IDLE] Подключён, начальная проверка почты...');
         await checkWithTimeout(notifyChatId);
+        // Страховка от спина: если idle() раз за разом возвращается мгновенно
+        // (мёртвое соединение, гонка с библиотекой — что угодно), рвём цикл
+        // ошибкой и переподключаемся, вместо того чтобы заморозить процесс.
+        let instantReturns = 0;
         while (true) {
+          const idleStart = Date.now();
           await idleWithTimeout(client, IDLE_TIMEOUT_MS);
+          if (!client.usable) {
+            throw new Error('IMAP-соединение больше не работает (usable=false)');
+          }
+          if (Date.now() - idleStart < 500) {
+            if (++instantReturns >= 20) {
+              throw new Error('IDLE спинится мгновенными возвратами — соединение сломано');
+            }
+          } else {
+            instantReturns = 0;
+          }
           // Gmail шлёт по IDLE не только реальные новые письма, но и keepalive/
           // flag-обновления — client.idle() резолвится и на них. Без фильтра
           // по 'exists' это гоняло полный checkKworkOrders() каждые ~2 сек,
