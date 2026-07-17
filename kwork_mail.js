@@ -81,7 +81,14 @@ async function fetchUnseenKworkEmails() {
   return emails;
 }
 
-async function markSeen(uid) {
+// Принимает один uid или массив — все письма помечаются одним соединением.
+// Раньше открывалось соединение на каждое письмо: пачка из 10+ писем выжигала
+// лимит apiLimiter и обрывала цикл на середине — уже отправленные уведомления
+// оставались непрочитанными и дублировались при следующей проверке.
+async function markSeen(uids) {
+  const list = Array.isArray(uids) ? uids : [uids];
+  if (!list.length) return;
+
   if (!apiLimiter.allow('kwork')) {
     throw new Error('Kwork IMAP: превышен лимит запросов, пропускаю markSeen');
   }
@@ -91,7 +98,7 @@ async function markSeen(uid) {
   try {
     const lock = await client.getMailboxLock('INBOX');
     try {
-      await client.messageFlagsAdd({ uid }, ['\\Seen']);
+      await client.messageFlagsAdd({ uid: list.join(',') }, ['\\Seen'], { uid: true });
     } finally {
       lock.release();
     }

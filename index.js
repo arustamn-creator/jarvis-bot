@@ -93,7 +93,24 @@ const KWORK_PROFILE =
 
 const MAX_PROCESSED_IDS = 500;
 
+// Мьютекс: /kwork_check и IDLE-цикл зовут проверку независимо — параллельный
+// запуск даёт двойные уведомления и перезапись state друг у друга.
+let kworkCheckActive = false;
+
 async function checkKworkOrders(notifyChatId) {
+  if (kworkCheckActive) {
+    console.log('[kwork] Проверка уже идёт — пропускаю параллельный запуск');
+    return { checked: 0, matched: 0, skipped: true };
+  }
+  kworkCheckActive = true;
+  try {
+    return await doCheckKworkOrders(notifyChatId);
+  } finally {
+    kworkCheckActive = false;
+  }
+}
+
+async function doCheckKworkOrders(notifyChatId) {
   agentRegistry.recordStart('kwork-monitor', 'Проверка почты на новые заказы Kwork');
   try {
     const state = loadState();
@@ -123,8 +140,14 @@ async function checkKworkOrders(notifyChatId) {
       }
     }
 
-    for (const email of digest.newEmails) {
-      await markSeen(email.uid);
+    if (digest.newEmails.length) {
+      try {
+        await markSeen(digest.newEmails.map((e) => e.uid));
+      } catch (err) {
+        // Уведомления уже отправлены — state ниже сохраняем в любом случае,
+        // дедупликация по processedMessageIds не даст дублей при перепроверке.
+        console.error('[kwork] Не удалось пометить письма прочитанными:', err.message);
+      }
     }
 
     state.lastRun = new Date().toISOString();
@@ -264,8 +287,10 @@ bot.onText(/\/kwork_check/, async (msg) => {
   const chatId = msg.chat.id;
   try {
     await bot.sendMessage(chatId, '🔍 Проверяю почту на новые заказы...');
-    const { checked, matched } = await checkKworkOrders(chatId);
-    if (matched === 0) {
+    const { checked, matched, skipped } = await checkKworkOrders(chatId);
+    if (skipped) {
+      await bot.sendMessage(chatId, 'Проверка уже идёт — подожди её результата.');
+    } else if (matched === 0) {
       await bot.sendMessage(chatId, `Проверено писем: ${checked}. Подходящих заказов нет.`);
     }
   } catch (err) {
@@ -291,13 +316,16 @@ async function downloadTelegramFile(fileId) {
   const fileUrl = `https://api.telegram.org/file/bot${process.env.TELEGRAM_TOKEN}/${file.file_path}`;
   const destPath = path.join(TMP_DIR, `voice_${fileId}.ogg`);
 
-  const response = await axios({ url: fileUrl, responseType: 'stream' });
+  const response = await axios({ url: fileUrl, responseType: 'stream', timeout: 30000 });
   const writer = fs.createWriteStream(destPath);
   response.data.pipe(writer);
 
   await new Promise((resolve, reject) => {
     writer.on('finish', resolve);
     writer.on('error', reject);
+    // Обрыв соединения посреди скачивания даёт ошибку на read-стриме, а не
+    // на writer — без этого промис зависал навсегда и tmp-файл не убирался.
+    response.data.on('error', reject);
   });
 
   return destPath;
@@ -386,6 +414,16 @@ function cleanupFiles(...files) {
 
 // === Команды ===
 
+// Telegram ограничивает сообщение 4096 символами, а Claude при max_tokens
+// 4096 отдаёт до ~15 000 — без нарезки длинный ответ падал 400 и пользователь
+// получал «❌ Ошибка» вместо ответа.
+const TG_MAX_LEN = 4096;
+async function sendLong(chatId, text) {
+  for (let i = 0; i < text.length; i += TG_MAX_LEN) {
+    await bot.sendMessage(chatId, text.slice(i, i + TG_MAX_LEN));
+  }
+}
+
 // Любой reject в async-хэндлере команды = unhandledRejection = exit(1) для
 // всего процесса (см. обработчик наверху) — поэтому команды всегда в обёртке.
 function safeHandler(label, handler) {
@@ -443,7 +481,7 @@ bot.on('message', async (msg) => {
   try {
     await bot.sendChatAction(chatId, 'typing');
     const reply = await askClaude(chatId, msg.text);
-    await bot.sendMessage(chatId, reply);
+    await sendLong(chatId, reply);
   } catch (err) {
     console.error('[text] Полная ошибка:', err);
     await bot.sendMessage(chatId, `❌ Ошибка: ${err.message}`).catch(() => {});
@@ -479,10 +517,12 @@ bot.on('voice', async (msg) => {
       return;
     }
 
-    await bot.editMessageText(`📝 Вы сказали: _"${transcribed}"_\n\nОбрабатываю...`, {
+    // Без parse_mode: транскрипция — произвольный текст, `_`/`*` в нём ломали
+    // Markdown-разбор Telegram, editMessageText падал 400 и весь voice-хэндлер
+    // уходил в catch без ответа пользователю.
+    await bot.editMessageText(`📝 Вы сказали: «${transcribed}»\n\nОбрабатываю...`, {
       chat_id: chatId,
       message_id: statusMsg.message_id,
-      parse_mode: 'Markdown',
     });
 
     await bot.sendChatAction(chatId, 'typing');
@@ -495,10 +535,10 @@ bot.on('voice', async (msg) => {
         await bot.sendVoice(chatId, oggBuffer, {}, { filename: 'reply.ogg', contentType: 'audio/ogg' });
       } catch (ttsErr) {
         console.error('[tts] Не удалось озвучить ответ, отправляю текстом:', ttsErr.stack || ttsErr.message);
-        await bot.sendMessage(chatId, reply);
+        await sendLong(chatId, reply);
       }
     } else {
-      await bot.sendMessage(chatId, reply);
+      await sendLong(chatId, reply);
     }
 
     agentRegistry.recordSuccess('voice-pipeline', `chatId=${chatId}: ok`);
