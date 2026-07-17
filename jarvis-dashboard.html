@@ -764,9 +764,7 @@ main {
   </div>
 
   <div class="btns">
-    <button class="btn start" id="btnStart" onclick="botAction('start')">Start</button>
-    <button class="btn stop"  id="btnStop"  onclick="botAction('stop')">Stop</button>
-    <button class="btn restart" id="btnRestart" onclick="botAction('restart')">Restart</button>
+    <button class="btn restart" id="btnRestart" onclick="botAction('restart')">Restart on Railway</button>
   </div>
 
   <div class="sf">
@@ -1166,6 +1164,7 @@ function updateStats() {
 /* ─── BOT API ─── */
 function applyBotStatus(status) {
   const running = status === 'running';
+  const deploying = status === 'deploying';
   const dot     = document.getElementById('botDot');
   const txt     = document.getElementById('botStatusText');
   const badge   = document.getElementById('botHeaderBadge');
@@ -1174,10 +1173,10 @@ function applyBotStatus(status) {
 
   dot.className   = 'sd ' + (running ? 'on' : 'off');
   txt.className   = running ? 'running' : 'stopped';
-  txt.textContent = running ? 'RUNNING' : 'STOPPED';
+  txt.textContent = running ? 'RUNNING' : deploying ? 'RESTARTING…' : status === 'unknown' ? 'NO TOKEN' : 'STOPPED';
 
   badge.className = 'bot-badge ' + (running ? 'running' : 'stopped');
-  label.textContent = running ? 'BOT ONLINE' : 'BOT OFFLINE';
+  label.textContent = running ? 'BOT ONLINE' : deploying ? 'RESTARTING…' : 'BOT OFFLINE';
 
   // reflect on Telegram agent card
   if (teleCard) {
@@ -1200,16 +1199,17 @@ async function pollBotStatus() {
 }
 
 async function botAction(action) {
-  const btns = ['btnStart','btnStop','btnRestart'].map(id => document.getElementById(id));
-  btns.forEach(b => b.disabled = true);
+  const btn = document.getElementById('btnRestart');
+  btn.disabled = true;
   try {
     const r = await fetch(`/api/bot/${action}`, { method: 'POST' });
     const d = await r.json();
+    if (!d.ok && d.msg) alert(`Рестарт не запущен: ${d.msg}`);
     applyBotStatus(d.status);
   } catch (e) {
     console.error(e);
   } finally {
-    btns.forEach(b => b.disabled = false);
+    btn.disabled = false;
   }
 }
 

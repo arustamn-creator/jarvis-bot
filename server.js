@@ -2,7 +2,6 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const express = require('express');
-const { spawn } = require('child_process');
 const axios = require('axios');
 
 // ── Startup diagnostics ──────────────────────────────────────────────────────
@@ -24,7 +23,17 @@ const SYSTEM_PROMPT = [
   'Keep responses concise and helpful.',
 ].join(' ');
 
+// Ограничение истории: без него массив рос бесконечно, и вся история целиком
+// уходила в Gemini каждым запросом.
+const MAX_HISTORY = 100;
 const chatHistory = [];
+
+function pushHistory(entry) {
+  chatHistory.push(entry);
+  if (chatHistory.length > MAX_HISTORY) {
+    chatHistory.splice(0, chatHistory.length - MAX_HISTORY);
+  }
+}
 
 // Gemini requires strict user→model alternation, must start with user
 function sanitizeHistory(hist) {
@@ -37,32 +46,50 @@ function sanitizeHistory(hist) {
   return out;
 }
 
-// ── Bot process management ───────────────────────────────────────────────────
-let botProcess = null;
+// ── Управление прод-ботом через Railway ─────────────────────────────────────
+// Раньше кнопки дашборда запускали ЛОКАЛЬНЫЙ node index.js — второй процесс
+// бота рядом с продом. Теперь дашборд управляет самим прод-сервисом Railway.
+// Нужен RAILWAY_API_TOKEN в .env (создать: railway.com → Account → Tokens).
+const RAILWAY_PROJECT_ID = '8ee239ca-29a4-499f-8dc7-546fbfbc966d';
+const RAILWAY_SERVICE_ID = '8a018352-3019-4ed0-9664-50180c02a0b8';
 
-function startBot() {
-  if (botProcess) return { ok: false, msg: 'Already running' };
-  botProcess = spawn('node', ['index.js'], {
-    cwd: __dirname,
-    stdio: 'inherit',
-    env: process.env,
-  });
-  botProcess.on('exit', (code) => {
-    console.log(`[BOT] Exited with code ${code}`);
-    botProcess = null;
-  });
-  botProcess.on('error', (err) => {
-    console.error(`[BOT] Error: ${err.message}`);
-    botProcess = null;
-  });
-  return { ok: true, msg: 'Started' };
+async function railwayGql(query, variables) {
+  const token = process.env.RAILWAY_API_TOKEN;
+  if (!token) throw new Error('RAILWAY_API_TOKEN не задан в .env');
+  const res = await axios.post(
+    'https://backboard.railway.com/graphql/v2',
+    { query, variables },
+    { headers: { Authorization: `Bearer ${token}` }, timeout: 20000 }
+  );
+  if (res.data.errors?.length) throw new Error(res.data.errors[0].message);
+  return res.data.data;
 }
 
-function stopBot() {
-  if (!botProcess) return { ok: false, msg: 'Not running' };
-  botProcess.kill('SIGTERM');
-  botProcess = null;
-  return { ok: true, msg: 'Stopped' };
+let cachedEnvId = null;
+async function railwayEnvId() {
+  if (cachedEnvId) return cachedEnvId;
+  const data = await railwayGql(
+    `query ($id: String!) {
+      project(id: $id) { environments { edges { node { id name } } } }
+    }`,
+    { id: RAILWAY_PROJECT_ID }
+  );
+  const edges = data.project.environments.edges;
+  const prod = edges.find((e) => e.node.name === 'production') || edges[0];
+  if (!prod) throw new Error('Не нашёл окружение production в Railway');
+  cachedEnvId = prod.node.id;
+  return cachedEnvId;
+}
+
+async function railwayDeployStatus() {
+  const environmentId = await railwayEnvId();
+  const data = await railwayGql(
+    `query ($input: DeploymentListInput!) {
+      deployments(input: $input, first: 1) { edges { node { status } } }
+    }`,
+    { input: { projectId: RAILWAY_PROJECT_ID, serviceId: RAILWAY_SERVICE_ID, environmentId } }
+  );
+  return data.deployments.edges[0]?.node?.status || 'UNKNOWN';
 }
 
 // ── Routes ───────────────────────────────────────────────────────────────────
@@ -70,26 +97,34 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'jarvis-dashboard.html'));
 });
 
-app.get('/api/bot/status', (req, res) => {
-  res.json({ status: botProcess ? 'running' : 'stopped' });
+app.get('/api/bot/status', async (req, res) => {
+  try {
+    const deploy = await railwayDeployStatus();
+    const status =
+      deploy === 'SUCCESS' ? 'running'
+      : ['BUILDING', 'DEPLOYING', 'INITIALIZING', 'QUEUED', 'WAITING'].includes(deploy) ? 'deploying'
+      : 'stopped';
+    res.json({ status, deploy });
+  } catch (err) {
+    res.json({ status: 'unknown', error: err.message });
+  }
 });
 
-app.post('/api/bot/start', (req, res) => {
-  const result = startBot();
-  res.json({ ...result, status: botProcess ? 'running' : 'stopped' });
-});
-
-app.post('/api/bot/stop', (req, res) => {
-  const result = stopBot();
-  res.json({ ...result, status: 'stopped' });
-});
-
-app.post('/api/bot/restart', (req, res) => {
-  stopBot();
-  setTimeout(() => {
-    const result = startBot();
-    res.json({ ...result, status: botProcess ? 'running' : 'stopped' });
-  }, 800);
+app.post('/api/bot/restart', async (req, res) => {
+  try {
+    const environmentId = await railwayEnvId();
+    await railwayGql(
+      `mutation ($serviceId: String!, $environmentId: String!) {
+        serviceInstanceRedeploy(serviceId: $serviceId, environmentId: $environmentId)
+      }`,
+      { serviceId: RAILWAY_SERVICE_ID, environmentId }
+    );
+    console.log('[BOT] Рестарт прод-сервиса на Railway запущен');
+    res.json({ ok: true, msg: 'Рестарт на Railway запущен', status: 'deploying' });
+  } catch (err) {
+    console.error('[BOT] Ошибка рестарта:', err.message);
+    res.status(502).json({ ok: false, msg: err.message, status: 'unknown' });
+  }
 });
 
 app.delete('/api/chat/history', (req, res) => {
@@ -104,7 +139,7 @@ app.post('/api/chat', async (req, res) => {
   if (!message) return res.status(400).json({ error: 'No message provided' });
   if (!API_KEY) return res.status(500).json({ error: 'GEMINI_API_KEY not configured' });
 
-  chatHistory.push({ role: 'user', content: message });
+  pushHistory({ role: 'user', content: message });
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -121,9 +156,12 @@ app.post('/api/chat', async (req, res) => {
 
     const apiRes = await axios({
       method: 'POST',
-      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?key=${API_KEY}&alt=sse`,
+      // Ключ в заголовке, не в URL — URL попадает в логи (err.config.url ниже),
+      // заголовки в них не печатаются.
+      url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse',
       headers: {
         'content-type': 'application/json',
+        'x-goog-api-key': API_KEY,
       },
       data: {
         system_instruction: {
@@ -158,7 +196,7 @@ app.post('/api/chat', async (req, res) => {
       }
     }
 
-    chatHistory.push({ role: 'assistant', content: fullText });
+    pushHistory({ role: 'assistant', content: fullText });
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     res.end();
     console.log(`[CHAT] OK — ${fullText.length} chars`);
