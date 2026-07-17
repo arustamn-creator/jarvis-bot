@@ -20,6 +20,7 @@ const { ImapFlow } = require('imapflow');
 const { saveMessage, getHistory } = require('./memory');
 const { addTask, listTasks, completeTaskByIndex } = require('./tasks');
 const { generateMarketingText } = require('./marketing');
+const { draftKworkResponse } = require('./kwork_response');
 const { callClaude, llmEvents } = require('./claude_client');
 const { telegramLimiter } = require('./rate_limits');
 const { markSeen } = require('./kwork_mail');
@@ -450,6 +451,7 @@ bot.onText(/\/start/, safeHandler('start', async (msg) => {
     '/tasks — список задач\n' +
     '/done <номер> — отметить задачу выполненной\n' +
     '/marketing <бриф> — сгенерировать текст (профиль/отклик/пост)\n' +
+    '/draft <текст заявки> — черновик отклика на заказ Kwork\n' +
     '/help — помощь',
     { parse_mode: 'Markdown' }
   );
@@ -465,7 +467,8 @@ bot.onText(/\/help/, safeHandler('help', async (msg) => {
     '• Распознавать и понимать голосовые сообщения\n' +
     '• Запоминать контекст разговора\n' +
     '• Вести список задач (/add, /tasks, /done)\n' +
-    '• Генерировать маркетинговые тексты (/marketing)\n\n' +
+    '• Генерировать маркетинговые тексты (/marketing)\n' +
+    '• Готовить черновики откликов на Kwork (/draft)\n\n' +
     'Просто напишите или скажите что-нибудь!',
     { parse_mode: 'Markdown' }
   );
@@ -533,6 +536,31 @@ bot.onText(/^\/marketing(?:\s+([\s\S]+))?$/, safeHandler('marketing', async (msg
   await bot.sendChatAction(chatId, 'typing');
   const text = await generateMarketingText(chatId, brief);
   await sendLong(chatId, text);
+}));
+
+// Черновик отклика на заказ Kwork: письма-дайджест содержат только
+// заголовок/категорию/бюджет, не полный текст заявки, а скрейпить kwork.ru
+// запрещено правилами домена — поэтому вставляет заявку сюда сам Рустам,
+// открыв её на сайте вручную. Решение и отправку fix-план требует делать
+// самому — бот только готовит черновик по фиксированной формуле.
+bot.onText(/^\/draft(?:\s+([\s\S]+))?$/, safeHandler('draft', async (msg, match) => {
+  const chatId = msg.chat.id;
+  const orderText = match[1]?.trim();
+  if (!orderText) {
+    await bot.sendMessage(
+      chatId,
+      'Использование: /draft <текст заявки>\n\n' +
+      'Открой заказ на Kwork, скопируй текст заявки целиком и пришли его после /draft.'
+    );
+    return;
+  }
+  await bot.sendChatAction(chatId, 'typing');
+  const draft = await draftKworkResponse(chatId, orderText);
+  await sendLong(chatId, draft);
+  await bot.sendMessage(
+    chatId,
+    '⚠️ Перед отправкой: сверь цену в тексте с ценой в оффере (одно число), добавь свою деталь, проверь, что заявка прошла все 4 критерия из /kwork_check.'
+  );
 }));
 
 // === Текстовые сообщения ===

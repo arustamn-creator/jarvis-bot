@@ -30,6 +30,12 @@ const AGENT_DEFS = {
     schedule: null,
     runnable: false,
   },
+  'kwork-response-drafter': {
+    name: 'Kwork Response Drafter',
+    description: 'Черновик отклика на заказ Kwork по формуле fix-плана через команду /draft. Отправляет только Рустам сам',
+    schedule: null,
+    runnable: false,
+  },
 };
 
 const state = new Map();
