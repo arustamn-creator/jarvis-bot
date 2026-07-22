@@ -97,7 +97,17 @@ const MAX_PROCESSED_IDS = 500;
 // запуск даёт двойные уведомления и перезапись state друг у друга.
 let kworkCheckActive = false;
 
+// Мониторинг Kwork отключён по запросу пользователя (2026-07-22) — не баг,
+// чисто операционное решение. Единая точка отключения: все 3 входа
+// (авто-IDLE ниже, /kwork_check, dashboard 'kwork-monitor') идут через
+// checkKworkOrders, так что флаг здесь перекрывает их разом.
+const KWORK_MONITORING_ENABLED = false;
+
 async function checkKworkOrders(notifyChatId) {
+  if (!KWORK_MONITORING_ENABLED) {
+    console.log('[kwork] Мониторинг отключён — пропускаю проверку');
+    return { checked: 0, matched: 0, skipped: true, disabled: true };
+  }
   if (kworkCheckActive) {
     console.log('[kwork] Проверка уже идёт — пропускаю параллельный запуск');
     return { checked: 0, matched: 0, skipped: true };
@@ -278,7 +288,9 @@ async function startKworkImapIdle(notifyChatId) {
   }
 }
 
-if (process.env.TELEGRAM_CHAT_ID && process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
+// Авто-старт IDLE-цикла отключён вместе с KWORK_MONITORING_ENABLED выше —
+// без него фоновое IMAP-соединение к Gmail вообще не открывается.
+if (KWORK_MONITORING_ENABLED && process.env.TELEGRAM_CHAT_ID && process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
   startKworkImapIdle(process.env.TELEGRAM_CHAT_ID);
   console.log('[Джарвис] 🔍 Мониторинг заказов Kwork запущен через IMAP IDLE');
 }
